@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // @ducanh2912/next-pwa emits minified bundles into public/ on build
+    "public/sw.js",
+    "public/sw.js.map",
+    "public/workbox-*.js",
+    "public/swe-worker-*.js",
+    "public/fallback-*.js",
   ]),
 ]);
 

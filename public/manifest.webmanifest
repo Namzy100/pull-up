@@ -1,0 +1,31 @@
+{
+  "name": "Pull Up",
+  "short_name": "PU",
+  "description": "The live pulse of campus.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#09090b",
+  "background_color": "#09090b",
+  "icons": [
+    {
+      "src": "/icon/192",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon/512",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon/maskable",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
