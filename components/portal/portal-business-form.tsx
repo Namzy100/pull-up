@@ -78,24 +78,24 @@ export function PortalBusinessForm({ onSubmitted }: PortalBusinessFormProps = {}
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-5 rounded-2xl border border-pu-border bg-gradient-to-b from-pu-surface/90 to-black p-5"
+      className="space-y-6 rounded-2xl border border-white/[0.08] bg-gradient-to-b from-pu-surface/90 to-black p-5 sm:p-6"
     >
-      <div className="flex items-start gap-2 border-b border-pu-border pb-4">
+      <div className="flex items-start gap-3 border-b border-white/[0.06] pb-5">
         <Store className="mt-0.5 size-5 shrink-0 text-pu-amber" aria-hidden />
-        <div>
-          <h2 className="font-heading text-lg font-extrabold tracking-tight text-white">
+        <div className="min-w-0">
+          <h2 className="font-heading text-base font-bold tracking-tight text-white sm:text-lg">
             Create deal
           </h2>
-          <p className="pu-meta mt-1">
+          <p className="pu-meta mt-1.5 leading-relaxed">
             Drop an offer for campus. Submissions stay in review until an admin clears
             them.
           </p>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="biz-name">Business name</Label>
+          <Label htmlFor="biz-name" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Business name</Label>
           <Input
             id="biz-name"
             value={values.businessName}
@@ -106,7 +106,7 @@ export function PortalBusinessForm({ onSubmitted }: PortalBusinessFormProps = {}
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="biz-title">Deal title</Label>
+          <Label htmlFor="biz-title" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Deal title</Label>
           <Input
             id="biz-title"
             value={values.dealTitle}
@@ -117,7 +117,7 @@ export function PortalBusinessForm({ onSubmitted }: PortalBusinessFormProps = {}
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label>Category</Label>
+          <Label className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Category</Label>
           <Select
             value={values.categoryTag}
             onValueChange={(v) => set("categoryTag")(v as DealFilterId)}
@@ -136,7 +136,7 @@ export function PortalBusinessForm({ onSubmitted }: PortalBusinessFormProps = {}
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="biz-perk">Offer / perk</Label>
+          <Label htmlFor="biz-perk" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Offer / perk</Label>
           <Input
             id="biz-perk"
             value={values.perk}
@@ -147,7 +147,7 @@ export function PortalBusinessForm({ onSubmitted }: PortalBusinessFormProps = {}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="biz-from">Valid from</Label>
+          <Label htmlFor="biz-from" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Valid from</Label>
           <Input
             id="biz-from"
             type="date"
@@ -158,7 +158,7 @@ export function PortalBusinessForm({ onSubmitted }: PortalBusinessFormProps = {}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="biz-until">Valid until</Label>
+          <Label htmlFor="biz-until" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Valid until</Label>
           <Input
             id="biz-until"
             type="date"
@@ -169,7 +169,7 @@ export function PortalBusinessForm({ onSubmitted }: PortalBusinessFormProps = {}
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="biz-area">Location area</Label>
+          <Label htmlFor="biz-area" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Location area</Label>
           <Input
             id="biz-area"
             value={values.area}
@@ -192,7 +192,7 @@ export function PortalBusinessForm({ onSubmitted }: PortalBusinessFormProps = {}
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="biz-desc">Description</Label>
+          <Label htmlFor="biz-desc" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Description</Label>
           <Textarea
             id="biz-desc"
             value={values.description}
@@ -203,7 +203,7 @@ export function PortalBusinessForm({ onSubmitted }: PortalBusinessFormProps = {}
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="biz-img">Image URL</Label>
+          <Label htmlFor="biz-img" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Image URL</Label>
           <Input
             id="biz-img"
             value={values.imageUrl}
@@ -214,7 +214,7 @@ export function PortalBusinessForm({ onSubmitted }: PortalBusinessFormProps = {}
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="biz-ext">External link (optional)</Label>
+          <Label htmlFor="biz-ext" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">External link (optional)</Label>
           <Input
             id="biz-ext"
             value={values.externalUrl}
@@ -226,19 +226,25 @@ export function PortalBusinessForm({ onSubmitted }: PortalBusinessFormProps = {}
       </div>
 
       {error ? (
-        <p className="text-sm font-semibold text-pu-urgent-glow" role="alert">
+        <div
+          role="alert"
+          className="rounded-xl border border-red-500/25 bg-red-950/30 px-3.5 py-2.5 text-sm font-medium leading-snug text-red-100"
+        >
           {error}
-        </p>
+        </div>
       ) : null}
       {done ? (
-        <p className="text-sm font-semibold text-pu-live" role="status">
+        <div
+          role="status"
+          className="rounded-xl border border-emerald-500/20 bg-emerald-950/25 px-3.5 py-2.5 text-sm font-medium leading-snug text-emerald-100"
+        >
           Deal submitted. Admin review pending.
-        </p>
+        </div>
       ) : null}
 
       <Button
         type="submit"
-        className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-pu-magenta to-pu-amber font-black uppercase tracking-[0.08em] text-white shadow-[0_0_22px_-8px_oklch(0.7_0.29_328/0.45)]"
+        className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-pu-magenta to-pu-amber font-bold uppercase tracking-[0.07em] text-white shadow-[0_4px_24px_-12px_oklch(0.7_0.29_328/0.35)]"
       >
         <Send className="mr-2 size-4" aria-hidden />
         Submit deal

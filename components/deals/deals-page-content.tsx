@@ -35,17 +35,17 @@ export function DealsPageContent({ deals }: DealsPageContentProps) {
       <LiveAmbient />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[400px] bg-[radial-gradient(ellipse_88%_58%_at_50%_-10%,oklch(0.72_0.16_72/0.2),transparent_56%)]" />
 
-      <div className="relative mx-auto flex w-full max-w-lg flex-col px-4 pb-6 pt-9 sm:pt-11">
+      <div className="relative mx-auto flex w-full max-w-lg flex-col px-4 pb-6 pt-8 sm:pt-10">
         <motion.header
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           className="space-y-3"
         >
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <p className="pu-eyebrow text-pu-amber/95">Tonight near UIUC</p>
-            <h1 className="pu-display text-balance">Deals near campus</h1>
-            <p className="pu-meta max-w-[21rem] text-[0.875rem] leading-snug">
+            <h1 className="pu-section-title-lg text-balance">Deals near campus</h1>
+            <p className="pu-meta max-w-[22rem] text-[0.8125rem] leading-relaxed sm:text-[0.875rem]">
               What can you get near campus right now — food, bars, drops, and
               student specials before they disappear.
             </p>
@@ -77,13 +77,8 @@ export function DealsPageContent({ deals }: DealsPageContentProps) {
           aria-labelledby="hot-deals-heading"
           className="mt-7 space-y-3"
         >
-          <div className="flex items-center gap-2">
-            <motion.span
-              animate={{ scale: [1, 1.06, 1] }}
-              transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <Flame className="size-6 text-pu-amber drop-shadow-[0_0_14px_oklch(0.82_0.17_72/0.45)]" />
-            </motion.span>
+          <div className="flex items-center gap-2.5">
+            <Flame className="size-5 shrink-0 text-pu-amber/90" aria-hidden />
             <h2 id="hot-deals-heading" className="pu-section-title-lg">
               Hot · ending soon
             </h2>
@@ -129,8 +124,8 @@ export function DealsPageContent({ deals }: DealsPageContentProps) {
               className={cn(
                 "rounded-full border px-3.5 py-2 text-[11px] font-black uppercase tracking-wide transition-colors",
                 chip === null
-                  ? "border-pu-magenta/55 bg-pu-magenta-dim/30 text-white shadow-[0_0_18px_-8px_oklch(0.7_0.29_328/0.45)]"
-                  : "border-pu-border bg-black/45 text-white/65 hover:border-white/25 hover:text-white/88"
+                  ? "border-pu-magenta/45 bg-pu-magenta-dim/22 text-white"
+                  : "border-white/[0.08] bg-black/40 text-white/65 hover:border-white/20 hover:text-white/88"
               )}
             >
               All moves
@@ -144,8 +139,8 @@ export function DealsPageContent({ deals }: DealsPageContentProps) {
                 className={cn(
                   "rounded-full border px-3.5 py-2 text-[11px] font-black uppercase tracking-wide transition-colors",
                   chip === id
-                    ? "border-pu-magenta/55 bg-pu-magenta-dim/30 text-white shadow-[0_0_18px_-8px_oklch(0.7_0.29_328/0.45)]"
-                    : "border-pu-border bg-black/45 text-white/65 hover:border-white/25 hover:text-white/88"
+                    ? "border-pu-magenta/45 bg-pu-magenta-dim/22 text-white"
+                    : "border-white/[0.08] bg-black/40 text-white/65 hover:border-white/20 hover:text-white/88"
                 )}
               >
                 {label}
@@ -186,14 +181,10 @@ function EmptyFilter() {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-[1.25rem] border border-dashed border-pu-magenta/30 bg-black/35 px-5 py-10 text-center"
+      className="pu-empty-panel border-pu-amber/15"
     >
-      <p className="font-heading text-lg font-black leading-snug tracking-tight text-white">
-        No drops here yet.{" "}
-        <span className="text-white/55">
-          Check another lane.
-        </span>
-      </p>
+      <p className="pu-empty-panel-title">No drops in this lane yet</p>
+      <p className="pu-empty-panel-hint text-white/50">Try another filter or check back — windows move fast near campus.</p>
     </motion.div>
   );
 }

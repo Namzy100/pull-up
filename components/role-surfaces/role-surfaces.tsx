@@ -12,7 +12,7 @@ export function UserSurface({
   return <>{children}</>;
 }
 
-/** Merchant / operator — structured, amber–performance accents, calmer than the feed. */
+/** Merchant / operator — structured, amber accents, restrained glow */
 export function BusinessSurface({
   children,
   className,
@@ -26,8 +26,8 @@ export function BusinessSurface({
     <div
       id={id}
       className={cn(
-        "rounded-[1.35rem] border border-white/[0.07] bg-gradient-to-b from-zinc-900/95 via-zinc-950 to-black",
-        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_0_40px_-20px_rgba(245,158,11,0.12)]",
+        "rounded-[1.25rem] border border-white/[0.06] bg-gradient-to-b from-zinc-900/92 via-zinc-950 to-black",
+        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.035),0_8px_32px_-24px_rgba(245,158,11,0.08)]",
         className
       )}
     >
@@ -42,7 +42,7 @@ export function BusinessSubmitAmbient() {
   );
 }
 
-/** Org / event command — energetic but cleaner than Tonight. */
+/** Org / event command — energetic magenta accent, clean edge */
 export function HostSurface({
   children,
   className,
@@ -56,8 +56,8 @@ export function HostSurface({
     <div
       id={id}
       className={cn(
-        "rounded-[1.35rem] border border-white/[0.08] bg-gradient-to-b from-zinc-900/92 via-zinc-950 to-black",
-        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_0_44px_-18px_oklch(0.65_0.22_328/0.22)]",
+        "rounded-[1.25rem] border border-white/[0.07] bg-gradient-to-b from-zinc-900/90 via-zinc-950 to-black",
+        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_10px_36px_-22px_oklch(0.62_0.18_328/0.14)]",
         className
       )}
     >
@@ -72,7 +72,7 @@ export function HostSubmitAmbient() {
   );
 }
 
-/** Trust & safety cockpit — minimal glow, sharp, operational. */
+/** Trust & safety cockpit — flat, sharp, minimal chrome */
 export function AdminSurface({
   children,
   className,
@@ -86,8 +86,8 @@ export function AdminSurface({
     <div
       id={id}
       className={cn(
-        "rounded-xl border border-white/[0.09] bg-zinc-950/95",
-        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]",
+        "rounded-lg border border-zinc-800/90 bg-zinc-950",
+        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.025)]",
         className
       )}
     >
@@ -104,13 +104,17 @@ export function AdminPageAmbient() {
 
 export function BusinessSectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-200/55">{children}</p>
+    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-200/50">
+      {children}
+    </p>
   );
 }
 
 export function HostSectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-pu-magenta/70">{children}</p>
+    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-pu-magenta/65">
+      {children}
+    </p>
   );
 }
 

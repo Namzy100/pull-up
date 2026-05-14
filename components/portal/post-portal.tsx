@@ -97,7 +97,7 @@ export function PostPortal({
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-200/65">
                 Merchant hub
               </p>
-              <h1 className="font-heading text-[1.85rem] font-extrabold tracking-tight text-white sm:text-[2.1rem]">
+              <h1 className="pu-section-title-lg max-w-[20ch] text-balance sm:max-w-none">
                 Promotions &amp; deals
               </h1>
               <p className="max-w-[24rem] text-[0.8125rem] font-medium leading-relaxed text-zinc-400">
@@ -110,7 +110,7 @@ export function PostPortal({
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-pu-magenta/75">
                 Event command
               </p>
-              <h1 className="font-heading text-[1.85rem] font-extrabold tracking-tight text-white sm:text-[2.1rem]">
+              <h1 className="pu-section-title-lg max-w-[18ch] text-balance sm:max-w-none">
                 Host dashboard
               </h1>
               <p className="max-w-[24rem] text-[0.8125rem] font-medium leading-relaxed text-white/60">
@@ -123,7 +123,7 @@ export function PostPortal({
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
                 Trust &amp; safety
               </p>
-              <h1 className="text-[1.65rem] font-semibold tracking-tight text-white sm:text-[1.85rem]">
+              <h1 className="font-heading text-[1.35rem] font-bold tracking-tight text-white sm:text-[1.5rem]">
                 Admin tools
               </h1>
               <p className="max-w-[24rem] text-[0.8125rem] leading-relaxed text-zinc-500">
@@ -134,7 +134,7 @@ export function PostPortal({
           ) : (
             <>
               <p className="pu-eyebrow">Pull Up</p>
-              <h1 className="pu-display text-[2.1rem] sm:text-[2.45rem]">Submit</h1>
+              <h1 className="pu-display max-w-[14ch] text-balance sm:max-w-none">Submit</h1>
               <p className="pu-meta max-w-[22rem] leading-relaxed">
                 {forcedRole
                   ? "Your posting workspace — requests, drafts, and verification status stay tied to your account."

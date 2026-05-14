@@ -81,24 +81,24 @@ export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-5 rounded-2xl border border-pu-border bg-gradient-to-b from-pu-surface/90 to-black p-5"
+      className="space-y-6 rounded-2xl border border-white/[0.08] bg-gradient-to-b from-pu-surface/90 to-black p-5 sm:p-6"
     >
-      <div className="flex items-start gap-2 border-b border-pu-border pb-4">
+      <div className="flex items-start gap-3 border-b border-white/[0.06] pb-5">
         <CalendarRange className="mt-0.5 size-5 shrink-0 text-pu-magenta" aria-hidden />
-        <div>
-          <h2 className="font-heading text-lg font-extrabold tracking-tight text-white">
+        <div className="min-w-0">
+          <h2 className="font-heading text-base font-bold tracking-tight text-white sm:text-lg">
             Create event
           </h2>
-          <p className="pu-meta mt-1">
+          <p className="pu-meta mt-1.5 leading-relaxed">
             Verified hosts control the pulse. Everything here goes to admin review
             before it hits campus.
           </p>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="host-title">Event title</Label>
+          <Label htmlFor="host-title" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Event title</Label>
           <Input
             id="host-title"
             value={values.title}
@@ -110,7 +110,7 @@ export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
         </div>
 
         <div className="space-y-2">
-          <Label>Category</Label>
+          <Label className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Category</Label>
           <Select
             value={values.category}
             onValueChange={(v) => set("category")(v as HostEventFormValues["category"])}
@@ -129,7 +129,7 @@ export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="host-date">Date</Label>
+          <Label htmlFor="host-date" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Date</Label>
           <Input
             id="host-date"
             type="date"
@@ -140,7 +140,7 @@ export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="host-start">Start time</Label>
+          <Label htmlFor="host-start" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Start time</Label>
           <Input
             id="host-start"
             type="time"
@@ -151,7 +151,7 @@ export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="host-end">End time</Label>
+          <Label htmlFor="host-end" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">End time</Label>
           <Input
             id="host-end"
             type="time"
@@ -162,7 +162,7 @@ export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="host-area">Area / location</Label>
+          <Label htmlFor="host-area" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Area / location</Label>
           <Input
             id="host-area"
             value={values.area}
@@ -173,7 +173,7 @@ export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="host-venue">Venue / house / frat / org</Label>
+          <Label htmlFor="host-venue" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Venue / house / frat / org</Label>
           <Input
             id="host-venue"
             value={values.venue}
@@ -184,7 +184,7 @@ export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="host-cover">Cover price (USD, blank if free)</Label>
+          <Label htmlFor="host-cover" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Cover price (USD, blank if free)</Label>
           <Input
             id="host-cover"
             inputMode="decimal"
@@ -196,7 +196,7 @@ export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
         </div>
 
         <div className="space-y-2">
-          <Label>Entry type</Label>
+          <Label className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Entry type</Label>
           <Select
             value={values.entryType}
             onValueChange={(v) => set("entryType")(v as EntryType)}
@@ -213,7 +213,7 @@ export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="host-stag">Stag rule</Label>
+          <Label htmlFor="host-stag" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Stag rule</Label>
           <Input
             id="host-stag"
             value={values.stagRule}
@@ -224,7 +224,7 @@ export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="host-age">Age restriction</Label>
+          <Label htmlFor="host-age" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Age restriction</Label>
           <Input
             id="host-age"
             value={values.ageRestriction}
@@ -235,7 +235,7 @@ export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="host-vibe">Vibe / music</Label>
+          <Label htmlFor="host-vibe" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Vibe / music</Label>
           <Input
             id="host-vibe"
             value={values.vibeMusic}
@@ -246,7 +246,7 @@ export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="host-desc">Description</Label>
+          <Label htmlFor="host-desc" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Description</Label>
           <Textarea
             id="host-desc"
             value={values.description}
@@ -257,7 +257,7 @@ export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="host-img">Image / flyer URL</Label>
+          <Label htmlFor="host-img" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">Image / flyer URL</Label>
           <Input
             id="host-img"
             value={values.imageUrl}
@@ -268,7 +268,7 @@ export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="host-ext">External link (optional)</Label>
+          <Label htmlFor="host-ext" className="text-[11px] font-semibold uppercase tracking-wide text-white/55">External link (optional)</Label>
           <Input
             id="host-ext"
             value={values.externalUrl}
@@ -280,19 +280,25 @@ export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
       </div>
 
       {error ? (
-        <p className="text-sm font-semibold text-pu-urgent-glow" role="alert">
+        <div
+          role="alert"
+          className="rounded-xl border border-red-500/25 bg-red-950/30 px-3.5 py-2.5 text-sm font-medium leading-snug text-red-100"
+        >
           {error}
-        </p>
+        </div>
       ) : null}
       {done ? (
-        <p className="text-sm font-semibold text-pu-live" role="status">
+        <div
+          role="status"
+          className="rounded-xl border border-emerald-500/20 bg-emerald-950/25 px-3.5 py-2.5 text-sm font-medium leading-snug text-emerald-100"
+        >
           Move submitted. Admin review pending.
-        </p>
+        </div>
       ) : null}
 
       <Button
         type="submit"
-        className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-pu-magenta to-pu-amber font-black uppercase tracking-[0.08em] text-white shadow-[0_0_22px_-8px_oklch(0.7_0.29_328/0.45)]"
+        className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-pu-magenta to-pu-amber font-bold uppercase tracking-[0.07em] text-white shadow-[0_4px_24px_-12px_oklch(0.7_0.29_328/0.35)]"
       >
         <Send className="mr-2 size-4" aria-hidden />
         Submit event

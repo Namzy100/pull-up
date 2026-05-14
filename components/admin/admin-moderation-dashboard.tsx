@@ -591,8 +591,9 @@ function SectionHead({ icon, title }: { icon: React.ReactNode; title: string }) 
 
 function EmptyPanel({ children }: { children: React.ReactNode }) {
   return (
-    <AdminSurface className="border border-dashed border-zinc-700 px-4 py-10 text-center text-sm font-medium text-zinc-500">
-      {children}
+    <AdminSurface className="border border-dashed border-zinc-700/80 px-4 py-12 text-center">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-600">Queue clear</p>
+      <p className="mt-2 text-sm font-medium leading-relaxed text-zinc-500">{children}</p>
     </AdminSurface>
   );
 }
@@ -727,7 +728,7 @@ function HostEventModerationCard({
   const validImg = img?.startsWith("http");
 
   return (
-    <li className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950/95">
+    <li className="overflow-hidden rounded-lg border border-zinc-800/95 bg-zinc-950">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-800/80 p-4">
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -817,7 +818,7 @@ function DealModerationCard({
   const dealLike = isPromo && isBusinessPromoDealLike(pending.promoType);
 
   return (
-    <li className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950/95">
+    <li className="overflow-hidden rounded-lg border border-zinc-800/95 bg-zinc-950">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-800/80 p-4">
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">

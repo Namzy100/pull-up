@@ -163,7 +163,7 @@ export function TonightHome({
             <div className="min-w-0 flex-1 space-y-2.5">
               <p className="pu-eyebrow text-pu-magenta/95">UIUC tonight</p>
               <div className="space-y-1.5">
-                <h1 className="pu-display">Pull Up</h1>
+                <h1 className="pu-display max-w-[11ch] text-balance sm:max-w-none">Pull Up</h1>
                 <div className="h-1 w-[min(56%,12rem)] rounded-full bg-gradient-to-r from-pu-magenta via-pu-amber to-transparent opacity-90" />
               </div>
               <p className="pu-meta-strong max-w-[18rem] text-[0.8125rem] leading-relaxed">
@@ -179,11 +179,11 @@ export function TonightHome({
                   duration: 2.8,
                   ease: "easeInOut",
                 }}
-                className="rounded-2xl border border-pu-live/40 bg-pu-surface-deep/95 px-3 py-2.5 shadow-[0_0_26px_-6px_oklch(0.86_0.22_145/0.45)]"
+                className="rounded-2xl border border-pu-live/28 bg-pu-surface-deep/95 px-3 py-2.5 shadow-[0_4px_24px_-12px_oklch(0.86_0.22_145/0.25)]"
               >
                 <span className="relative flex justify-center">
                   <span className="absolute inline-flex size-3 animate-ping rounded-full bg-pu-live/70" />
-                  <span className="relative inline-flex size-3 rounded-full bg-pu-live shadow-[0_0_14px_oklch(0.86_0.22_145/0.85)]" />
+                  <span className="relative inline-flex size-3 rounded-full bg-pu-live" />
                 </span>
                 <span className="mt-2 flex items-center justify-center gap-1 text-[10px] font-black uppercase tracking-[0.16em] text-pu-live">
                   <Radio className="size-3.5 text-pu-live" aria-hidden />
@@ -311,10 +311,9 @@ export function TonightHome({
             </div>
 
             {filteredFeed.length === 0 ? (
-              <div className="rounded-[1.25rem] border border-dashed border-white/15 bg-black/35 px-5 py-12 text-center">
-                <p className="font-heading text-xl font-black tracking-tight text-white">
-                  No move found. Try another search.
-                </p>
+              <div className="pu-empty-panel">
+                <p className="pu-empty-panel-title">No move found</p>
+                <p className="pu-empty-panel-hint">Try another search or clear filters — spelling counts on campus nicknames.</p>
               </div>
             ) : (
               <ul className="pu-feed-stack">
@@ -564,9 +563,10 @@ export function TonightHome({
             </div>
 
             {filteredFeed.length === 0 ? (
-              <div className="rounded-[1.25rem] border border-dashed border-pu-magenta/35 bg-black/35 px-5 py-12 text-center">
-                <p className="font-heading text-xl font-black tracking-tight text-white">
-                  Nothing hot in this lane right now.
+              <div className="pu-empty-panel border-pu-magenta/12">
+                <p className="pu-empty-panel-title">Nothing hot in this lane</p>
+                <p className="pu-empty-panel-hint">
+                  Loosen interest filters or check back — the pulse updates live.
                 </p>
               </div>
             ) : (

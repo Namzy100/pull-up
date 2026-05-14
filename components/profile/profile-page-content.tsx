@@ -65,9 +65,9 @@ function formatMemberSince(iso: string) {
 
 function ProfileScreen({ children }: { children: React.ReactNode }) {
   return (
-    <div className="pu-screen pb-6 pt-7 sm:pt-9">
+    <div className="pu-screen pb-8 pt-8 sm:pt-10">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[380px] bg-[radial-gradient(ellipse_88%_58%_at_50%_-12%,oklch(0.55_0.22_328/0.2),transparent_58%)]" />
-      <div className="relative mx-auto w-full max-w-lg space-y-6 px-4">{children}</div>
+      <div className="relative mx-auto w-full max-w-lg space-y-7 px-4">{children}</div>
     </div>
   );
 }
@@ -1138,9 +1138,9 @@ function StatMini({
 
 function EmptyBlock({ title, hint }: { title: string; hint: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-pu-border bg-black/35 px-5 py-10 text-center">
-      <p className="font-heading text-lg font-extrabold text-white">{title}</p>
-      <p className="pu-meta mt-2">{hint}</p>
+    <div className="pu-empty-panel border-white/[0.08] py-9">
+      <p className="pu-empty-panel-title">{title}</p>
+      <p className="pu-empty-panel-hint">{hint}</p>
     </div>
   );
 }

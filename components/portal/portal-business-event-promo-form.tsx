@@ -82,24 +82,24 @@ export function PortalBusinessEventPromoForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-5 rounded-2xl border border-amber-500/25 bg-gradient-to-b from-amber-950/25 to-black p-5"
+      className="space-y-6 rounded-2xl border border-amber-500/18 bg-gradient-to-b from-amber-950/20 to-black p-5 sm:p-6"
     >
-      <div className="flex items-start gap-2 border-b border-amber-500/20 pb-4">
-        <CalendarRange className="mt-0.5 size-5 shrink-0 text-amber-300" aria-hidden />
-        <div>
-          <h2 className="font-heading text-lg font-extrabold tracking-tight text-white">
+      <div className="flex items-start gap-3 border-b border-amber-500/15 pb-5">
+        <CalendarRange className="mt-0.5 size-5 shrink-0 text-amber-300/90" aria-hidden />
+        <div className="min-w-0">
+          <h2 className="font-heading text-base font-bold tracking-tight text-white sm:text-lg">
             Create event / promo
           </h2>
-          <p className="pu-meta mt-1">
+          <p className="pu-meta mt-1.5 leading-relaxed">
             One-night moves, watch parties, drops — same review path as deals. Food specials and
             limited drops publish to Deals when approved.
           </p>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="bep-name">Business name</Label>
+          <Label htmlFor="bep-name" className="text-[11px] font-semibold uppercase tracking-wide text-amber-100/50">Business name</Label>
           <Input
             id="bep-name"
             value={values.businessName}
@@ -110,7 +110,7 @@ export function PortalBusinessEventPromoForm({
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="bep-title">Promo / event title</Label>
+          <Label htmlFor="bep-title" className="text-[11px] font-semibold uppercase tracking-wide text-amber-100/50">Promo / event title</Label>
           <Input
             id="bep-title"
             value={values.promoTitle}
@@ -121,7 +121,7 @@ export function PortalBusinessEventPromoForm({
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label>Type</Label>
+          <Label className="text-[11px] font-semibold uppercase tracking-wide text-amber-100/50">Type</Label>
           <Select
             value={values.promoType}
             onValueChange={(v) => set("promoType")(v as BusinessPromoTypeId)}
@@ -140,7 +140,7 @@ export function PortalBusinessEventPromoForm({
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="bep-desc">Description</Label>
+          <Label htmlFor="bep-desc" className="text-[11px] font-semibold uppercase tracking-wide text-amber-100/50">Description</Label>
           <Textarea
             id="bep-desc"
             value={values.description}
@@ -151,7 +151,7 @@ export function PortalBusinessEventPromoForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="bep-date">Date</Label>
+          <Label htmlFor="bep-date" className="text-[11px] font-semibold uppercase tracking-wide text-amber-100/50">Date</Label>
           <Input
             id="bep-date"
             type="date"
@@ -164,7 +164,7 @@ export function PortalBusinessEventPromoForm({
         <div className="hidden sm:block" aria-hidden />
 
         <div className="space-y-2">
-          <Label htmlFor="bep-start">Start time</Label>
+          <Label htmlFor="bep-start" className="text-[11px] font-semibold uppercase tracking-wide text-amber-100/50">Start time</Label>
           <Input
             id="bep-start"
             type="time"
@@ -175,7 +175,7 @@ export function PortalBusinessEventPromoForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="bep-end">End time</Label>
+          <Label htmlFor="bep-end" className="text-[11px] font-semibold uppercase tracking-wide text-amber-100/50">End time</Label>
           <Input
             id="bep-end"
             type="time"
@@ -186,7 +186,7 @@ export function PortalBusinessEventPromoForm({
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="bep-area">Location / area</Label>
+          <Label htmlFor="bep-area" className="text-[11px] font-semibold uppercase tracking-wide text-amber-100/50">Location / area</Label>
           <Input
             id="bep-area"
             value={values.area}
@@ -197,7 +197,7 @@ export function PortalBusinessEventPromoForm({
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="bep-img">Image / flyer URL (optional)</Label>
+          <Label htmlFor="bep-img" className="text-[11px] font-semibold uppercase tracking-wide text-amber-100/50">Image / flyer URL (optional)</Label>
           <Input
             id="bep-img"
             value={values.imageUrl}
@@ -208,7 +208,7 @@ export function PortalBusinessEventPromoForm({
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="bep-entry">Entry / price info (optional)</Label>
+          <Label htmlFor="bep-entry" className="text-[11px] font-semibold uppercase tracking-wide text-amber-100/50">Entry / price info (optional)</Label>
           <Input
             id="bep-entry"
             value={values.entryInfo}
@@ -231,7 +231,7 @@ export function PortalBusinessEventPromoForm({
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="bep-vibe">Expected vibe / crowd (optional)</Label>
+          <Label htmlFor="bep-vibe" className="text-[11px] font-semibold uppercase tracking-wide text-amber-100/50">Expected vibe / crowd (optional)</Label>
           <Input
             id="bep-vibe"
             value={values.expectedVibe}
@@ -242,7 +242,7 @@ export function PortalBusinessEventPromoForm({
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="bep-ext">External link (optional)</Label>
+          <Label htmlFor="bep-ext" className="text-[11px] font-semibold uppercase tracking-wide text-amber-100/50">External link (optional)</Label>
           <Input
             id="bep-ext"
             value={values.externalUrl}
@@ -254,19 +254,25 @@ export function PortalBusinessEventPromoForm({
       </div>
 
       {error ? (
-        <p className="text-sm font-semibold text-pu-urgent-glow" role="alert">
+        <div
+          role="alert"
+          className="rounded-xl border border-red-500/25 bg-red-950/30 px-3.5 py-2.5 text-sm font-medium leading-snug text-red-100"
+        >
           {error}
-        </p>
+        </div>
       ) : null}
       {done ? (
-        <p className="text-sm font-semibold text-amber-200" role="status">
+        <div
+          role="status"
+          className="rounded-xl border border-amber-500/25 bg-amber-950/25 px-3.5 py-2.5 text-sm font-medium leading-snug text-amber-100"
+        >
           Event / promo submitted. Admin review pending.
-        </p>
+        </div>
       ) : null}
 
       <Button
         type="submit"
-        className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-amber-600 to-amber-400 font-black uppercase tracking-[0.08em] text-black shadow-[0_0_22px_-8px_oklch(0.75_0.18_75/0.45)] hover:from-amber-500 hover:to-amber-300"
+        className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-amber-600 to-amber-400 font-bold uppercase tracking-[0.07em] text-black shadow-[0_4px_20px_-10px_oklch(0.75_0.18_75/0.35)] hover:from-amber-500 hover:to-amber-300"
       >
         <Send className="mr-2 size-4" aria-hidden />
         Submit event / promo

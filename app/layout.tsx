@@ -60,7 +60,7 @@ export default function RootLayout({
       lang="en"
       className={`dark ${geistSans.variable} ${geistMono.variable} ${syne.variable} h-full antialiased`}
     >
-      <body className="flex min-h-dvh flex-col bg-transparent pb-[calc(5.25rem+env(safe-area-inset-bottom))] text-foreground">
+      <body className="flex min-h-dvh flex-col bg-transparent pb-[calc(5.75rem+env(safe-area-inset-bottom))] text-foreground">
         <SessionSync />
         {children}
         <BottomNav />

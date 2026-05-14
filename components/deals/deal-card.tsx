@@ -50,15 +50,15 @@ export function DealCard({
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.99 }}
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-pu-border bg-gradient-to-br from-pu-surface via-pu-surface-deep to-black shadow-[0_14px_40px_-22px_rgba(0,0,0,0.88)]",
-        featured && "ring-1 ring-pu-amber/38 shadow-[0_18px_44px_-18px_oklch(0.82_0.17_72/0.2)]"
+        "relative overflow-hidden border border-white/[0.08] bg-gradient-to-br from-pu-surface via-pu-surface-deep to-black shadow-[0_12px_40px_-26px_rgba(0,0,0,0.88)] transition-[box-shadow,transform] duration-300 hover:border-white/[0.12]",
+        layout === "feed" ? "rounded-3xl" : "rounded-2xl",
+        featured &&
+          "ring-1 ring-pu-amber/22 shadow-[0_14px_44px_-22px_oklch(0.82_0.17_72/0.12)]"
       )}
     >
       {featured ? (
-        <motion.div
-          className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-pu-amber/25"
-          animate={{ opacity: [0.35, 0.7, 0.35] }}
-          transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+        <div
+          className="pointer-events-none absolute inset-0 rounded-[inherit] ring-1 ring-inset ring-pu-amber/15"
           aria-hidden
         />
       ) : null}
@@ -101,7 +101,7 @@ export function DealCard({
           <p className="text-[11px] font-semibold uppercase tracking-wide text-white/52">
             {deal.venueLabel}
           </p>
-          <h3 className="font-heading text-base font-extrabold leading-snug tracking-[-0.02em] text-white sm:text-lg">
+          <h3 className="min-w-0 font-heading text-[0.98rem] font-bold leading-snug tracking-[-0.018em] text-white sm:text-[1.0625rem]">
             {deal.title}
           </h3>
           <p className="text-sm font-semibold text-white/88">{deal.perk}</p>
@@ -125,7 +125,7 @@ export function DealCard({
           className={cn(
             "mt-0.5 shrink-0 self-start border-pu-border",
             saved &&
-              "border-pu-magenta/55 bg-pu-magenta-dim/30 text-white shadow-[0_0_16px_-6px_oklch(0.7_0.29_328/0.45)]"
+              "border-pu-magenta/40 bg-pu-magenta-dim/25 text-white"
           )}
           onClick={() => toggleSaveDeal(deal.id)}
         >
@@ -170,7 +170,7 @@ export function DealCard({
             <Button
               type="button"
               size="lg"
-              className="h-11 flex-1 rounded-xl border-0 bg-gradient-to-r from-pu-magenta to-pu-amber font-black uppercase tracking-[0.1em] text-white shadow-[0_0_26px_-10px_oklch(0.7_0.29_328/0.5)] hover:opacity-95 active:scale-[0.99]"
+              className="h-11 flex-1 rounded-xl border-0 bg-gradient-to-r from-pu-magenta to-pu-amber font-bold uppercase tracking-[0.08em] text-white shadow-[0_4px_24px_-12px_oklch(0.7_0.29_328/0.35)] hover:opacity-95 active:scale-[0.99]"
             >
               Pull Up
             </Button>

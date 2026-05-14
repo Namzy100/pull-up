@@ -46,7 +46,7 @@ export function MyEventsContent() {
       <LiveAmbient />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[380px] bg-[radial-gradient(ellipse_82%_54%_at_50%_-6%,oklch(0.55_0.22_328/0.2),transparent_56%)]" />
 
-      <div className="relative mx-auto flex w-full max-w-lg flex-col px-4 pb-4 pt-7 sm:pt-9">
+      <div className="relative mx-auto flex w-full max-w-lg flex-col px-4 pb-6 pt-7 sm:pt-9">
         <div className="mb-6 flex items-center gap-3">
           <Link
             href="/"
@@ -63,7 +63,7 @@ export function MyEventsContent() {
             >
               Locked in
             </motion.p>
-            <h1 className="pu-display text-[2.15rem] sm:text-[2.5rem]">Your moves</h1>
+            <h1 className="pu-section-title-lg text-balance">Your moves</h1>
           </div>
         </div>
 
@@ -72,34 +72,28 @@ export function MyEventsContent() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col items-center rounded-[1.25rem] border border-pu-border bg-gradient-to-b from-pu-surface/95 to-black px-6 py-12 text-center shadow-[0_0_48px_-18px_oklch(0.7_0.29_328/0.32)]"
+            className="pu-empty-panel flex flex-col items-center py-12"
           >
-            <motion.div
-              animate={{ rotate: [0, 5, -5, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-              className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-pu-magenta/28 to-pu-amber/18 ring-1 ring-pu-magenta/35"
-            >
-              <Sparkles className="size-7 text-pu-amber" aria-hidden />
-            </motion.div>
-            <p className="max-w-[17rem] font-heading text-xl font-extrabold leading-snug tracking-tight text-balance text-white">
-              Nothing saved yet.
-            </p>
-            <p className="pu-meta mt-3 max-w-[19rem] text-[0.875rem] leading-relaxed">
-              Find the move before it disappears.
+            <div className="mb-4 flex size-12 items-center justify-center rounded-2xl border border-white/[0.08] bg-gradient-to-br from-pu-magenta/15 to-pu-amber/10">
+              <Sparkles className="size-6 text-pu-amber/90" aria-hidden />
+            </div>
+            <p className="pu-empty-panel-title">Nothing saved yet</p>
+            <p className="pu-empty-panel-hint">
+              Save events and deals from Tonight so your plan stays one tap away.
             </p>
             <Link
               href="/"
-              className="mt-7 inline-flex items-center justify-center rounded-xl border border-pu-magenta/45 bg-gradient-to-r from-pu-magenta/35 to-pu-amber/22 px-6 py-3 text-sm font-black uppercase tracking-[0.12em] text-white shadow-[0_0_24px_-8px_oklch(0.7_0.29_328/0.45)] transition hover:border-pu-magenta/65 active:scale-[0.99]"
+              className="mt-8 inline-flex min-h-11 items-center justify-center rounded-xl border border-white/[0.12] bg-white/[0.06] px-6 text-sm font-bold text-white transition hover:border-pu-magenta/35 hover:bg-white/[0.09] active:scale-[0.99]"
             >
-              Tonight feed
+              Browse Tonight
             </Link>
           </motion.div>
         ) : (
-          <div className="flex flex-col gap-7">
+          <div className="flex flex-col gap-8">
             <section aria-labelledby="rsvp-heading" className="space-y-3">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <Flame className="size-5 text-pu-amber drop-shadow-[0_0_12px_oklch(0.82_0.17_72/0.4)]" />
+                  <Flame className="size-5 shrink-0 text-pu-amber/85" aria-hidden />
                   <h2
                     id="rsvp-heading"
                     className="pu-section-title text-lg sm:text-xl"
@@ -112,7 +106,7 @@ export function MyEventsContent() {
                 </p>
               </div>
               {rsvpedEvents.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-pu-border bg-black/30 px-4 py-4 text-center text-sm font-medium text-white/48">
+                <p className="rounded-2xl border border-dashed border-white/[0.1] bg-black/35 px-4 py-4 text-center text-sm font-medium leading-relaxed text-white/55">
                   No RSVPs yet — lock one in on anything that needs it.
                 </p>
               ) : (
@@ -139,7 +133,7 @@ export function MyEventsContent() {
                 </p>
               </div>
               {savedEvents.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-pu-border bg-black/30 px-4 py-4 text-center text-sm font-medium text-white/48">
+                <p className="rounded-2xl border border-dashed border-white/[0.1] bg-black/35 px-4 py-4 text-center text-sm font-medium leading-relaxed text-white/55">
                   No saved events — tap Save on the moves you might pull up to.
                 </p>
               ) : (
@@ -169,13 +163,10 @@ export function MyEventsContent() {
                 </p>
               </div>
               {savedDeals.length === 0 ? (
-                <div className="rounded-2xl border border-pu-border bg-gradient-to-br from-pu-surface/85 to-black px-5 py-7 text-center">
-                  <p className="text-sm font-semibold text-white/78">
-                    No deals locked yet.
-                  </p>
-                  <p className="pu-meta mt-2 leading-relaxed">
-                    Deals land in the feed soon — save one before the window
-                    resets.
+                <div className="pu-empty-panel border-white/[0.08] py-8">
+                  <p className="text-sm font-semibold text-white/80">No deals locked yet</p>
+                  <p className="pu-empty-panel-hint mt-1 text-white/48">
+                    Save a deal from the feed before the window resets.
                   </p>
                 </div>
               ) : (

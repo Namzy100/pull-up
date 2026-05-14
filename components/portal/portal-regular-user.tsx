@@ -58,13 +58,13 @@ export function PortalRegularUser({ variant, resubmitRole }: PortalRegularUserPr
   const isResubmit = variant === "resubmit";
 
   return (
-    <div className="space-y-5 rounded-2xl border border-pu-border bg-gradient-to-b from-pu-surface/90 to-black p-5 shadow-[0_0_36px_-14px_oklch(0.7_0.29_328/0.22)]">
+    <div className="space-y-5 rounded-2xl border border-white/[0.08] bg-gradient-to-b from-pu-surface/85 to-black p-5 sm:p-6">
       <div className="flex items-start gap-3">
         <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-pu-border bg-black/50">
           <Lock className="size-5 text-pu-amber" aria-hidden />
         </div>
         <div className="min-w-0 space-y-1">
-          <h2 className="font-heading text-lg font-extrabold tracking-tight text-white">
+          <h2 className="font-heading text-base font-bold tracking-tight text-white sm:text-lg">
             {isResubmit ? "Request access again" : "Posting is for verified hosts and businesses."}
           </h2>
           <p className="pu-meta text-[0.8125rem] leading-relaxed">
@@ -103,7 +103,7 @@ export function PortalRegularUser({ variant, resubmitRole }: PortalRegularUserPr
         <Button
           type="button"
           disabled={busy}
-          className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-pu-magenta to-pu-amber font-black uppercase tracking-[0.08em] text-white shadow-[0_0_22px_-8px_oklch(0.7_0.29_328/0.45)]"
+          className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-pu-magenta to-pu-amber font-bold uppercase tracking-[0.07em] text-white shadow-[0_4px_24px_-12px_oklch(0.7_0.29_328/0.35)]"
           onClick={() => void runRequest(resubmitRole)}
         >
           {busy ? "Submitting…" : `Re-request ${resubmitRole === "business" ? "business" : "host"} access`}
@@ -113,7 +113,7 @@ export function PortalRegularUser({ variant, resubmitRole }: PortalRegularUserPr
           <Button
             type="button"
             disabled={busy}
-            className="h-11 rounded-xl border-0 bg-gradient-to-r from-pu-magenta to-pu-amber font-black uppercase tracking-[0.08em] text-white shadow-[0_0_22px_-8px_oklch(0.7_0.29_328/0.45)]"
+            className="h-11 rounded-xl border-0 bg-gradient-to-r from-pu-magenta to-pu-amber font-bold uppercase tracking-[0.07em] text-white shadow-[0_4px_24px_-12px_oklch(0.7_0.29_328/0.35)]"
             onClick={() => void runRequest("host")}
           >
             {busy ? "Submitting…" : "Request host access"}
@@ -131,12 +131,12 @@ export function PortalRegularUser({ variant, resubmitRole }: PortalRegularUserPr
       )}
 
       {message ? (
-        <p
-          className="text-center text-[0.8125rem] font-semibold text-pu-live"
+        <div
+          className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 px-3 py-2.5 text-center text-[0.8125rem] font-medium leading-snug text-emerald-100"
           role="status"
         >
           {message}
-        </p>
+        </div>
       ) : null}
     </div>
   );

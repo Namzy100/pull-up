@@ -100,7 +100,7 @@ export function EventCard({
             ? {
                 boxShadow: [
                   "0 0 0 0 oklch(0.86 0.22 145 / 0)",
-                  "0 0 40px -10px oklch(0.86 0.22 145 / 0.4)",
+                  "0 0 28px -12px oklch(0.86 0.22 145 / 0.22)",
                   "0 0 0 0 oklch(0.86 0.22 145 / 0)",
                 ],
               }
@@ -115,15 +115,15 @@ export function EventCard({
       >
         <Card
           className={cn(
-            "relative gap-0 overflow-hidden border border-pu-border bg-pu-surface-deep/50 py-0 shadow-[0_14px_44px_-26px_rgba(0,0,0,0.92)] ring-0 transition-[transform,box-shadow,border-color] duration-300 hover:border-pu-magenta/35 hover:shadow-[0_22px_48px_-22px_oklch(0.7_0.29_328/0.28)] active:scale-[0.998]",
+            "relative gap-0 overflow-hidden border border-white/[0.08] bg-pu-surface-deep/55 py-0 shadow-[0_12px_40px_-28px_rgba(0,0,0,0.9)] ring-0 transition-[transform,box-shadow,border-color] duration-300 hover:border-white/[0.14] hover:shadow-[0_18px_44px_-26px_rgba(0,0,0,0.88)] active:scale-[0.998]",
             isCarousel ? "rounded-2xl" : "rounded-3xl",
-            event.liveNow && "border-pu-live/35"
+            event.liveNow && "border-pu-live/25"
           )}
         >
           {event.liveNow && (
             <motion.div
-              className="pointer-events-none absolute inset-0 z-[5] rounded-[inherit] ring-1 ring-inset ring-pu-live/40"
-              animate={{ opacity: [0.3, 0.75, 0.3] }}
+              className="pointer-events-none absolute inset-0 z-[5] rounded-[inherit] ring-1 ring-inset ring-pu-live/25"
+              animate={{ opacity: [0.25, 0.5, 0.25] }}
               transition={{
                 duration: 2.2,
                 repeat: Infinity,
@@ -173,14 +173,14 @@ export function EventCard({
               </motion.div>
 
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" />
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_70%_at_50%_0%,rgba(217,70,239,0.22),transparent_50%)]" />
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_80%_100%,rgba(251,191,36,0.12),transparent_55%)]" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_70%_at_50%_0%,rgba(217,70,239,0.12),transparent_52%)]" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_80%_100%,rgba(251,191,36,0.08),transparent_55%)]" />
 
               {event.liveNow && (
-                <div className="pointer-events-none absolute left-1/2 top-3 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-pu-live/55 bg-pu-live-dim/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-pu-live shadow-[0_0_22px_-2px_oklch(0.86_0.22_145/0.55)]">
+                <div className="pointer-events-none absolute left-1/2 top-3 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-pu-live/40 bg-pu-live-dim/85 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pu-live">
                   <span className="relative flex size-2">
                     <span className="absolute inline-flex size-full animate-ping rounded-full bg-pu-live opacity-70" />
-                    <span className="relative inline-flex size-2 rounded-full bg-pu-live shadow-[0_0_10px_oklch(0.86_0.22_145/0.9)]" />
+                    <span className="relative inline-flex size-2 rounded-full bg-pu-live" />
                   </span>
                   Live
                 </div>
@@ -194,7 +194,7 @@ export function EventCard({
               >
                 <div className="flex flex-wrap items-center gap-2">
                   {hotRank !== undefined && (
-                    <span className="pointer-events-none flex h-7 min-w-7 items-center justify-center rounded-full bg-gradient-to-br from-pu-amber to-pu-magenta px-2 text-[11px] font-black tabular-nums text-zinc-950 shadow-[0_0_18px_oklch(0.82_0.17_72/0.45)]">
+                    <span className="pointer-events-none flex h-7 min-w-7 items-center justify-center rounded-full bg-gradient-to-br from-pu-amber to-pu-magenta px-2 text-[11px] font-black tabular-nums text-zinc-950 shadow-[0_2px_12px_-4px_oklch(0.82_0.17_72/0.35)]">
                       #{hotRank}
                     </span>
                   )}
@@ -230,10 +230,10 @@ export function EventCard({
                 <h3
                   id={`evt-card-title-${event.id}`}
                   className={cn(
-                    "font-heading font-extrabold tracking-[-0.032em] text-balance text-white",
+                    "min-w-0 font-heading font-bold tracking-[-0.028em] text-balance text-white break-words",
                     isCarousel
-                      ? "text-[1.3rem] leading-[1.08]"
-                      : "text-[1.55rem] leading-[1.06] sm:text-[1.72rem]"
+                      ? "text-[1.15rem] leading-[1.12] sm:text-[1.22rem]"
+                      : "text-[1.38rem] leading-[1.08] sm:text-[1.52rem]"
                   )}
                   style={{
                     textShadow:
@@ -246,7 +246,7 @@ export function EventCard({
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-semibold text-white/82 sm:text-sm">
                   <span className="inline-flex items-center gap-1.5">
                     <MapPin
-                      className="size-4 shrink-0 text-pu-magenta drop-shadow-[0_0_10px_oklch(0.7_0.29_328/0.45)]"
+                      className="size-4 shrink-0 text-pu-magenta/90"
                       aria-hidden
                     />
                     {event.area}
@@ -260,8 +260,8 @@ export function EventCard({
 
           <div
             className={cn(
-              "relative grid gap-3 rounded-b-3xl bg-gradient-to-br from-pu-surface via-pu-surface-deep to-black p-3 sm:gap-3.5 sm:p-4",
-              "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-pu-magenta/40 before:to-transparent",
+              "relative grid gap-3.5 rounded-b-3xl bg-gradient-to-br from-pu-surface via-pu-surface-deep to-black p-3.5 sm:gap-4 sm:p-4",
+              "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/[0.08] before:to-transparent",
               isCarousel && "rounded-b-2xl"
             )}
           >
@@ -282,7 +282,7 @@ export function EventCard({
                 className={cn(
                   "shrink-0 border-white/15 font-bold transition-colors",
                   saved &&
-                    "border-pu-magenta/55 bg-pu-magenta-dim/35 text-white shadow-[0_0_20px_-8px_oklch(0.7_0.29_328/0.45)] hover:bg-pu-magenta-dim/45",
+                    "border-pu-magenta/40 bg-pu-magenta-dim/28 text-white hover:bg-pu-magenta-dim/38",
                   isCarousel && "min-w-0 px-2"
                 )}
                 onClick={(e) => {
@@ -325,7 +325,7 @@ export function EventCard({
                 className={cn(
                   "shrink-0 border-white/15 font-bold transition-colors",
                   rsvped &&
-                    "border-pu-live/50 bg-pu-live-dim/40 text-pu-live shadow-[0_0_20px_-8px_oklch(0.86_0.22_145/0.35)] hover:bg-pu-live-dim/55",
+                    "border-pu-live/40 bg-pu-live-dim/32 text-pu-live hover:bg-pu-live-dim/45",
                   isCarousel && "min-w-0 px-2"
                 )}
                 onClick={(e) => {

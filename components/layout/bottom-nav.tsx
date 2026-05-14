@@ -29,10 +29,10 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-zinc-950/92 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-950/78"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.08] bg-zinc-950/94 pb-[max(0.625rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-12px_40px_-28px_rgba(0,0,0,0.85)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-950/82"
       aria-label="Primary"
     >
-      <div className="mx-auto flex max-w-lg items-stretch justify-around px-1.5">
+      <div className="mx-auto flex max-w-lg items-stretch justify-around px-[max(0.375rem,env(safe-area-inset-left))] pr-[max(0.375rem,env(safe-area-inset-right))]">
         {links.map(({ href, label, icon: Icon }) => {
           const resolvedHref = href === "/profile" ? meHref : href;
           const active =
@@ -48,23 +48,22 @@ export function BottomNav() {
               key={href}
               href={resolvedHref}
               className={cn(
-                "relative flex min-h-[3.25rem] flex-1 flex-col items-center justify-end gap-0.5 pb-1.5 text-[10px] font-semibold tracking-tight transition-colors active:opacity-90 sm:text-xs",
+                "relative flex min-h-[3.5rem] min-w-0 flex-1 flex-col items-center justify-end gap-1 pb-2 text-[10px] font-semibold tracking-tight transition-colors active:opacity-90 sm:text-[11px]",
                 active ? "text-white" : "text-muted-foreground hover:text-white/90"
               )}
             >
               {active && (
                 <motion.span
                   layoutId="bottom-nav-pill"
-                  className="absolute inset-x-2 top-1 h-10 rounded-2xl bg-gradient-to-r from-pu-magenta/40 to-pu-amber/22 ring-1 ring-white/12"
+                  className="absolute inset-x-1.5 top-0.5 h-[2.875rem] rounded-2xl bg-gradient-to-r from-pu-magenta/18 to-pu-amber/12 ring-1 ring-white/[0.07]"
                   transition={{ type: "spring", stiffness: 420, damping: 34 }}
                 />
               )}
-              <span className="relative z-10 flex flex-col items-center gap-0.5">
+              <span className="relative z-10 flex min-w-0 flex-col items-center gap-1">
                 <Icon
                   className={cn(
-                    "size-[1.375rem]",
-                    active &&
-                      "text-pu-magenta drop-shadow-[0_0_14px_oklch(0.7_0.29_328/0.45)]"
+                    "size-[1.4rem] shrink-0",
+                    active ? "text-pu-magenta" : "text-white/55"
                   )}
                   aria-hidden
                 />
