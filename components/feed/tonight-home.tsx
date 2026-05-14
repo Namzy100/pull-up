@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { motion } from "framer-motion";
 import { Bookmark, Eye, Flame, Radio, Search, X, Zap } from "lucide-react";
@@ -43,6 +44,8 @@ type TonightHomeProps = {
   feedEvents: PuEvent[];
   campusPulse: CampusPulse;
   deals: PuDeal[];
+  /** Public preview (`/?demo=1`) — not a signed-in session. */
+  demoMode?: boolean;
 };
 
 const INTEREST_PROMPT_LS = "pu_has_seen_interest_prompt";
@@ -61,7 +64,10 @@ export function TonightHome({
   feedEvents,
   campusPulse,
   deals,
+  demoMode = false,
 }: TonightHomeProps) {
+  const router = useRouter();
+  const exitDemoMode = useAppStore((s) => s.exitDemoMode);
   const profile = useAppStore((s) => s.mockProfile);
   const selectedInterests = useAppStore((s) => s.selectedInterests);
   const followedVenueIds = useAppStore((s) => s.followedVenueIds);
@@ -153,6 +159,41 @@ export function TonightHome({
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_88%_62%_at_50%_-14%,oklch(0.55_0.22_328/0.26),transparent_58%)]" />
 
       <div className="relative mx-auto flex w-full max-w-lg flex-col gap-7 px-4 pb-3 pt-9 sm:gap-8 sm:pt-11">
+        {demoMode ? (
+          <div className="flex flex-col gap-3 rounded-2xl border border-amber-200/25 bg-amber-500/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-200/90">
+                Demo mode
+              </p>
+              <p className="text-xs font-medium leading-relaxed text-white/75">
+                Sample profile and saves stay on this device.{" "}
+                <span className="text-white/90">You are not signed in.</span>
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="border-white/20 text-xs font-semibold text-white"
+                onClick={() => {
+                  exitDemoMode();
+                  router.replace("/");
+                }}
+              >
+                Exit demo
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="text-xs font-semibold"
+                asChild
+              >
+                <Link href="/signup">Create account</Link>
+              </Button>
+            </div>
+          </div>
+        ) : null}
         <motion.header
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}

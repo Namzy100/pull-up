@@ -9,20 +9,40 @@ import { useAppStore } from "@/store/use-app-store";
 
 export function SessionSync() {
   const hydrateFromSupabase = useAppStore((s) => s.hydrateFromSupabase);
-  const resetToMockDefaults = useAppStore((s) => s.resetToMockDefaults);
+  const hydrateLoggedOut = useAppStore((s) => s.hydrateLoggedOut);
+  const resetToDemoDefaults = useAppStore((s) => s.resetToDemoDefaults);
   const clearSessionScopedState = useAppStore((s) => s.clearSessionScopedState);
 
   useEffect(() => {
-    if (!hasSupabaseEnv()) return;
+    if (!hasSupabaseEnv()) {
+      const demo =
+        typeof window !== "undefined" && window.localStorage.getItem("pu_demo_mode") === "1";
+      if (demo) {
+        resetToDemoDefaults();
+      } else {
+        hydrateLoggedOut();
+      }
+      return;
+    }
+
     let mounted = true;
     const supabase = createSupabaseBrowserClient();
     const runSync = async () => {
       clearSessionScopedState();
       const data = await syncProfileStateFromSupabase();
       if (!mounted) return;
+      const demo =
+        typeof window !== "undefined" && window.localStorage.getItem("pu_demo_mode") === "1";
       if (!data) {
-        resetToMockDefaults();
+        if (demo) {
+          resetToDemoDefaults();
+        } else {
+          hydrateLoggedOut();
+        }
         return;
+      }
+      if (demo && typeof window !== "undefined") {
+        window.localStorage.removeItem("pu_demo_mode");
       }
       hydrateFromSupabase(data);
     };
@@ -36,7 +56,12 @@ export function SessionSync() {
       mounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, [clearSessionScopedState, hydrateFromSupabase, resetToMockDefaults]);
+  }, [
+    clearSessionScopedState,
+    hydrateFromSupabase,
+    hydrateLoggedOut,
+    resetToDemoDefaults,
+  ]);
 
   return null;
 }

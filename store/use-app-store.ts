@@ -34,7 +34,7 @@ import type {
   PendingHostEventSubmission,
 } from "@/lib/portal-types";
 import { validateBusinessEventPromoSubmission } from "@/lib/portal-validation";
-import { DEFAULT_MOCK_PROFILE } from "@/lib/mock-profile";
+import { DEFAULT_MOCK_PROFILE, LOGGED_OUT_PROFILE } from "@/lib/mock-profile";
 import type { Json } from "@/lib/supabase/database.types";
 import type { MockProfileSession, MockUserRole, PuInterestId } from "@/lib/types";
 
@@ -191,6 +191,9 @@ export type AppStore = {
   portalApprovedToday: number;
   portalFlaggedUpdates: number;
 
+  authUserId: string | null | undefined;
+  authReady: boolean;
+
   toggleSaveEvent: (eventId: string) => void;
   toggleRsvpEvent: (eventId: string) => void;
   toggleSaveDeal: (dealId: string) => void;
@@ -207,15 +210,20 @@ export type AppStore = {
     value: boolean
   ) => void;
   hydrateFromSupabase: (payload: {
+    userId: string;
     profile: MockProfileSession;
     savedEventIds: string[];
     rsvpedEventIds: string[];
     followedVenueIds: string[];
     interests: PuInterestId[];
   }) => void;
-  resetToMockDefaults: () => void;
+  hydrateLoggedOut: () => void;
+  resetToDemoDefaults: () => void;
   /** Clear user-scoped UI state before hydrating a different auth session. */
   clearSessionScopedState: () => void;
+  enterDemoMode: () => void;
+  /** Clear demo local flag and client store (does not sign out a real session). */
+  exitDemoMode: () => void;
   logout: () => Promise<void>;
 
   submitHostEventForApproval: (
@@ -249,16 +257,19 @@ export const useAppStore = create<AppStore>((set) => ({
   savedEventIds: [],
   rsvpedEventIds: [],
   savedDealIds: [],
-  selectedInterests: [...DEFAULT_MOCK_PROFILE.interests],
-  mockUserRole: DEFAULT_MOCK_PROFILE.role,
+  selectedInterests: [],
+  mockUserRole: LOGGED_OUT_PROFILE.role,
 
-  mockProfile: { ...DEFAULT_MOCK_PROFILE },
-  followedVenueIds: ["venue-kams", "venue-joes-brewery"],
+  mockProfile: { ...LOGGED_OUT_PROFILE },
+  followedVenueIds: [],
 
-  pendingHostSubmissions: [...INITIAL_PENDING_HOST_EVENTS],
-  pendingBusinessSubmissions: [...INITIAL_PENDING_BUSINESS_DEALS],
-  portalApprovedToday: 4,
-  portalFlaggedUpdates: 2,
+  pendingHostSubmissions: [],
+  pendingBusinessSubmissions: [],
+  portalApprovedToday: 0,
+  portalFlaggedUpdates: 0,
+
+  authUserId: undefined,
+  authReady: false,
 
   toggleSaveEvent: (eventId) =>
     set((s) => {
@@ -371,16 +382,30 @@ export const useAppStore = create<AppStore>((set) => ({
       return { mockProfile };
     }),
 
-  hydrateFromSupabase: ({ profile, savedEventIds, rsvpedEventIds, followedVenueIds, interests }) =>
-    set(() => ({
-      mockProfile: profile,
-      mockUserRole: profile.role,
-      savedEventIds,
-      rsvpedEventIds,
-      followedVenueIds,
-      selectedInterests:
-        interests.length > 0 ? interests : (profile.interests ?? []),
-    })),
+  hydrateFromSupabase: ({
+    userId,
+    profile,
+    savedEventIds,
+    rsvpedEventIds,
+    followedVenueIds,
+    interests,
+  }) =>
+    set(() => {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("pu_demo_mode");
+      }
+      return {
+        authUserId: userId,
+        authReady: true,
+        mockProfile: profile,
+        mockUserRole: profile.role,
+        savedEventIds,
+        rsvpedEventIds,
+        followedVenueIds,
+        selectedInterests:
+          interests.length > 0 ? interests : (profile.interests ?? []),
+      };
+    }),
 
   clearSessionScopedState: () =>
     set(() => ({
@@ -388,13 +413,32 @@ export const useAppStore = create<AppStore>((set) => ({
       rsvpedEventIds: [],
       savedDealIds: [],
       selectedInterests: [],
-      mockProfile: { ...DEFAULT_MOCK_PROFILE },
-      mockUserRole: "regular_user",
+      mockProfile: { ...LOGGED_OUT_PROFILE },
+      mockUserRole: LOGGED_OUT_PROFILE.role,
       followedVenueIds: [],
     })),
 
-  resetToMockDefaults: () =>
+  hydrateLoggedOut: () =>
     set(() => ({
+      authUserId: null,
+      authReady: true,
+      mockProfile: { ...LOGGED_OUT_PROFILE },
+      mockUserRole: LOGGED_OUT_PROFILE.role,
+      selectedInterests: [],
+      savedEventIds: [],
+      rsvpedEventIds: [],
+      savedDealIds: [],
+      followedVenueIds: [],
+      pendingHostSubmissions: [],
+      pendingBusinessSubmissions: [],
+      portalApprovedToday: 0,
+      portalFlaggedUpdates: 0,
+    })),
+
+  resetToDemoDefaults: () =>
+    set(() => ({
+      authUserId: null,
+      authReady: true,
       mockProfile: { ...DEFAULT_MOCK_PROFILE },
       mockUserRole: DEFAULT_MOCK_PROFILE.role,
       selectedInterests: [...DEFAULT_MOCK_PROFILE.interests],
@@ -402,19 +446,32 @@ export const useAppStore = create<AppStore>((set) => ({
       rsvpedEventIds: [],
       savedDealIds: [],
       followedVenueIds: ["venue-kams", "venue-joes-brewery"],
+      pendingHostSubmissions: [...INITIAL_PENDING_HOST_EVENTS],
+      pendingBusinessSubmissions: [...INITIAL_PENDING_BUSINESS_DEALS],
+      portalApprovedToday: 4,
+      portalFlaggedUpdates: 2,
     })),
+
+  enterDemoMode: () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("pu_demo_mode", "1");
+    }
+    useAppStore.getState().resetToDemoDefaults();
+  },
+
+  exitDemoMode: () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("pu_demo_mode");
+    }
+    useAppStore.getState().hydrateLoggedOut();
+  },
 
   logout: async () => {
     await signOutSupabase();
-    set({
-      mockProfile: { ...DEFAULT_MOCK_PROFILE },
-      mockUserRole: DEFAULT_MOCK_PROFILE.role,
-      selectedInterests: [...DEFAULT_MOCK_PROFILE.interests],
-      savedEventIds: [],
-      rsvpedEventIds: [],
-      savedDealIds: [],
-      followedVenueIds: ["venue-kams", "venue-joes-brewery"],
-    });
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("pu_demo_mode");
+    }
+    useAppStore.getState().hydrateLoggedOut();
   },
 
   submitHostEventForApproval: async (values) => {

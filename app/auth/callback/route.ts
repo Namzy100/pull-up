@@ -1,14 +1,17 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
-import { getSupabasePublicEnv } from "@/lib/supabase/env";
+import { getSupabasePublicEnv, hasSupabaseEnv } from "@/lib/supabase/env";
 
 type PendingCookie = { name: string; value: string; options: CookieOptions };
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const next = requestUrl.searchParams.get("next") ?? "/profile";
+  const next = requestUrl.searchParams.get("next") ?? "/";
+  if (!hasSupabaseEnv()) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
   const { url, anonKey } = getSupabasePublicEnv();
 
   const pendingCookies: PendingCookie[] = [];

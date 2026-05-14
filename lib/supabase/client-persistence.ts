@@ -77,6 +77,7 @@ export async function syncProfileStateFromSupabase() {
     consentMarketing: false,
   };
   return {
+    userId: user.id,
     profile: profile ? profileRowToMockSession(profile) : fallbackProfile,
     savedEventIds,
     rsvpedEventIds,

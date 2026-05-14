@@ -177,7 +177,7 @@ export function ProfilePageContent({
 
   async function handleLogout() {
     await logout();
-    router.replace("/login");
+    router.replace("/");
     router.refresh();
   }
 

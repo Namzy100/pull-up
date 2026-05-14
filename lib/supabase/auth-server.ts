@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { getProfileById, profileRowToMockSession } from "@/lib/supabase/repositories";
-import { DEFAULT_MOCK_PROFILE } from "@/lib/mock-profile";
+import { LOGGED_OUT_PROFILE } from "@/lib/mock-profile";
 
 export async function getServerSessionUser() {
   if (!hasSupabaseEnv()) {
@@ -33,7 +33,7 @@ export async function getAuthedProfileOrFallback(nextPath?: string) {
   if (!supabase || !user) {
     return {
       user: null,
-      profile: { ...DEFAULT_MOCK_PROFILE },
+      profile: { ...LOGGED_OUT_PROFILE },
       hasProfile: false,
     };
   }
@@ -41,7 +41,11 @@ export async function getAuthedProfileOrFallback(nextPath?: string) {
   if (!profile) {
     return {
       user,
-      profile: { ...DEFAULT_MOCK_PROFILE, username: user.email?.split("@")[0] ?? "new_user" },
+      profile: {
+        ...LOGGED_OUT_PROFILE,
+        username: user.email?.split("@")[0] ?? "",
+        memberSince: new Date().toISOString(),
+      },
       hasProfile: false,
     };
   }
@@ -60,7 +64,11 @@ export async function getOptionalSessionProfile() {
   if (!profile) {
     return {
       user,
-      profile: { ...DEFAULT_MOCK_PROFILE, username: user.email?.split("@")[0] ?? "new_user" },
+      profile: {
+        ...LOGGED_OUT_PROFILE,
+        username: user.email?.split("@")[0] ?? "",
+        memberSince: new Date().toISOString(),
+      },
       hasProfile: false,
     };
   }

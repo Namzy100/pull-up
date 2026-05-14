@@ -4,13 +4,19 @@ import { createServerClient } from "@supabase/ssr";
 import { getSupabasePublicEnv, hasSupabaseEnv } from "@/lib/supabase/env";
 
 function isProtectedPath(pathname: string): boolean {
-  return pathname.startsWith("/submit") || pathname.startsWith("/admin") || pathname.startsWith("/host");
+  return (
+    pathname.startsWith("/submit") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/host") ||
+    pathname.startsWith("/profile") ||
+    pathname.startsWith("/my-events")
+  );
 }
 
+/** If non-null, user must have one of these `profiles.role` values (not enforced when null). */
 function requiredRolesForPath(pathname: string): string[] | null {
   if (pathname.startsWith("/admin")) return ["admin"];
   if (pathname.startsWith("/host")) return ["host", "admin"];
-  if (pathname.startsWith("/submit")) return ["host", "business", "admin"];
   return null;
 }
 
@@ -70,8 +76,14 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (isAuthPath(pathname) && user) {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/profile";
+    redirectUrl.pathname = prof?.role === "admin" ? "/admin" : "/";
+    redirectUrl.search = "";
     return NextResponse.redirect(redirectUrl);
   }
 

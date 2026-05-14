@@ -17,9 +17,9 @@ export default function LoginPage() {
   const router = useRouter();
   const envConfigured = hasSupabaseEnv();
   const [nextPath] = useState(() => {
-    if (typeof window === "undefined") return "/profile";
+    if (typeof window === "undefined") return "/";
     const params = new URLSearchParams(window.location.search);
-    return params.get("next") ?? "/profile";
+    return params.get("next") ?? "/";
   });
 
   const [email, setEmail] = useState("");

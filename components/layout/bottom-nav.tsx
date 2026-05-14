@@ -6,6 +6,7 @@ import { Flame, MapPinned, PlusCircle, Tag, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { AdminBottomNav } from "@/components/layout/admin-bottom-nav";
+import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { useAppStore } from "@/store/use-app-store";
 import { cn } from "@/lib/utils";
 
@@ -20,12 +21,21 @@ const links = [
 export function BottomNav() {
   const pathname = usePathname();
   const role = useAppStore((s) => s.mockUserRole);
+  const authReady = useAppStore((s) => s.authReady);
+  const authUserId = useAppStore((s) => s.authUserId);
+  const envConfigured = hasSupabaseEnv();
+  const showAuthGate = envConfigured && authReady && authUserId == null;
 
   if (pathname.startsWith("/admin")) {
     return <AdminBottomNav />;
   }
 
-  const meHref = role === "admin" ? "/admin" : "/profile";
+  const meHref = showAuthGate
+    ? "/login?next=%2Fprofile"
+    : role === "admin"
+      ? "/admin"
+      : "/profile";
+  const submitHref = showAuthGate ? "/login?next=%2Fsubmit" : "/submit";
 
   return (
     <nav
@@ -34,7 +44,8 @@ export function BottomNav() {
     >
       <div className="mx-auto flex max-w-lg items-stretch justify-around px-[max(0.375rem,env(safe-area-inset-left))] pr-[max(0.375rem,env(safe-area-inset-right))]">
         {links.map(({ href, label, icon: Icon }) => {
-          const resolvedHref = href === "/profile" ? meHref : href;
+          const resolvedHref =
+            href === "/profile" ? meHref : href === "/submit" ? submitHref : href;
           const active =
             resolvedHref === "/"
               ? pathname === "/"

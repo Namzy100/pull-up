@@ -82,7 +82,7 @@ export default function OnboardingPage() {
     setConsentLocation(row.consent_location);
     setConsentMarketing(row.consent_marketing);
     if (row.onboarding_complete) {
-      router.replace("/profile");
+      router.replace("/");
       return;
     }
     return "ready" as const;
@@ -185,7 +185,7 @@ export default function OnboardingPage() {
     ]);
     const synced = await syncProfileStateFromSupabase();
     if (synced) hydrateFromSupabase(synced);
-    router.replace("/profile");
+    router.replace("/");
     router.refresh();
   }
 

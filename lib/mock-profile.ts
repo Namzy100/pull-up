@@ -1,6 +1,34 @@
 import type { MockProfileSession, MockUserRole } from "@/lib/types";
 
-/** Default local identity — swap for `session.user` post-auth */
+/**
+ * Signed-out / anonymous UI shape — never show as a real account.
+ * Used for initial store + post-logout hydration (not for dev demo personas).
+ */
+export const LOGGED_OUT_PROFILE: MockProfileSession = {
+  username: "",
+  fullName: "",
+  campus: "",
+  avatarUrl: "",
+  role: "regular_user",
+  requestedRole: "none",
+  verificationStatus: "none",
+  businessName: "",
+  businessType: "",
+  businessWebsite: "",
+  businessContact: "",
+  organizationName: "",
+  organizationType: "",
+  verificationNotes: "",
+  memberSince: "",
+  onboardingComplete: false,
+  interests: [],
+  consentAnalytics: false,
+  consentPersonalization: false,
+  consentLocation: false,
+  consentMarketing: false,
+};
+
+/** Explicit local-only demo persona — only applied when user opts into “Preview demo”. */
 export const DEFAULT_MOCK_PROFILE: MockProfileSession = {
   username: "nightshift_uiuc",
   fullName: "Avery Carter",
