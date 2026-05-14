@@ -1,3 +1,4 @@
+import type { BusinessPromoTypeId } from "@/lib/supabase/business-deal-payload";
 import type { EventCategory } from "@/lib/types";
 
 import { DEAL_FILTER_OPTIONS } from "@/lib/deals-data";
@@ -23,3 +24,16 @@ export function categoryLabelForEvent(cat: EventCategory): string {
 }
 
 export const PORTAL_DEAL_CATEGORY_OPTIONS = DEAL_FILTER_OPTIONS;
+
+export const PORTAL_BUSINESS_PROMO_TYPE_OPTIONS: readonly {
+  id: BusinessPromoTypeId;
+  label: string;
+}[] = [
+  { id: "event", label: "Event" },
+  { id: "promo", label: "Promo" },
+  { id: "food_special", label: "Food special" },
+  { id: "watch_party", label: "Watch party" },
+  { id: "live_music", label: "Live music" },
+  { id: "limited_drop", label: "Limited drop" },
+  { id: "other", label: "Other" },
+] as const;

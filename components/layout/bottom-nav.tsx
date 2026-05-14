@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { Flame, MapPinned, PlusCircle, Tag, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
 
+import { AdminBottomNav } from "@/components/layout/admin-bottom-nav";
+import { useAppStore } from "@/store/use-app-store";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -17,6 +19,13 @@ const links = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const role = useAppStore((s) => s.mockUserRole);
+
+  if (pathname.startsWith("/admin")) {
+    return <AdminBottomNav />;
+  }
+
+  const meHref = role === "admin" ? "/admin" : "/profile";
 
   return (
     <nav
@@ -25,16 +34,19 @@ export function BottomNav() {
     >
       <div className="mx-auto flex max-w-lg items-stretch justify-around px-1.5">
         {links.map(({ href, label, icon: Icon }) => {
+          const resolvedHref = href === "/profile" ? meHref : href;
           const active =
-            href === "/"
+            resolvedHref === "/"
               ? pathname === "/"
-              : href === "/profile"
-                ? pathname === "/profile"
-                : pathname.startsWith(href);
+              : resolvedHref === "/admin"
+                ? pathname.startsWith("/admin")
+                : resolvedHref === "/profile"
+                  ? pathname === "/profile"
+                  : pathname.startsWith(href);
           return (
             <Link
               key={href}
-              href={href}
+              href={resolvedHref}
               className={cn(
                 "relative flex min-h-[3.25rem] flex-1 flex-col items-center justify-end gap-0.5 pb-1.5 text-[10px] font-semibold tracking-tight transition-colors active:opacity-90 sm:text-xs",
                 active ? "text-white" : "text-muted-foreground hover:text-white/90"
@@ -56,7 +68,7 @@ export function BottomNav() {
                   )}
                   aria-hidden
                 />
-                {label}
+                {href === "/profile" && role === "admin" ? "Ops" : label}
               </span>
             </Link>
           );

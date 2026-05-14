@@ -1,10 +1,13 @@
 import { create } from "zustand";
 
 import {
+  PORTAL_BUSINESS_PROMO_TYPE_OPTIONS,
   PORTAL_DEAL_CATEGORY_OPTIONS,
   categoryLabelForEvent,
 } from "@/lib/portal-constants";
 import {
+  approveAndPublishBusinessSubmission,
+  approveAndPublishHostSubmission,
   persistBusinessSubmission,
   persistBusinessModeration,
   persistConsentEvent,
@@ -17,17 +20,22 @@ import {
   persistVenueFollow,
   signOutSupabase,
 } from "@/lib/supabase/client-persistence";
+import { DEFAULT_BUSINESS_EVENT_IMAGE } from "@/lib/supabase/business-deal-payload";
+import { hasSupabaseEnv } from "@/lib/supabase/env";
 import {
   INITIAL_PENDING_BUSINESS_DEALS,
   INITIAL_PENDING_HOST_EVENTS,
 } from "@/lib/portal-mock-queue";
 import type {
   BusinessDealFormValues,
+  BusinessEventPromoFormValues,
   HostEventFormValues,
   PendingBusinessDealSubmission,
   PendingHostEventSubmission,
 } from "@/lib/portal-types";
+import { validateBusinessEventPromoSubmission } from "@/lib/portal-validation";
 import { DEFAULT_MOCK_PROFILE } from "@/lib/mock-profile";
+import type { Json } from "@/lib/supabase/database.types";
 import type { MockProfileSession, MockUserRole, PuInterestId } from "@/lib/types";
 
 function newSubmissionId(prefix: "host" | "biz"): string {
@@ -89,6 +97,67 @@ function businessFormToPending(
   };
 }
 
+function businessEventPromoSubmissionBundle(values: BusinessEventPromoFormValues): {
+  payload: Json;
+  pending: PendingBusinessDealSubmission;
+} {
+  const id = newSubmissionId("biz");
+  const promoTypeLabel =
+    PORTAL_BUSINESS_PROMO_TYPE_OPTIONS.find((o) => o.id === values.promoType)?.label ??
+    String(values.promoType);
+  const perk = values.entryInfo.trim() || "Event / promo listing";
+  const submittedAt = new Date().toISOString();
+  const payload = {
+    id,
+    submissionKind: "event_promo" as const,
+    businessName: values.businessName.trim(),
+    dealTitle: values.promoTitle.trim(),
+    promoType: values.promoType,
+    promoTypeLabel,
+    eventDate: values.eventDate,
+    startTime: values.startTime,
+    endTime: values.endTime,
+    area: values.area.trim(),
+    description: values.description.trim(),
+    imageUrl: values.imageUrl.trim(),
+    entryInfo: values.entryInfo.trim(),
+    studentOnly: values.studentOnly,
+    expectedVibe: values.expectedVibe.trim(),
+    externalUrl: values.externalUrl.trim(),
+    perk,
+    validFrom: values.eventDate,
+    validUntil: values.eventDate,
+    categoryLabel: promoTypeLabel,
+    categoryTag: "local_business",
+  } satisfies Record<string, unknown>;
+  const pending: PendingBusinessDealSubmission = {
+    id,
+    submittedAt,
+    status: "pending",
+    submissionKind: "event_promo",
+    businessName: values.businessName.trim(),
+    dealTitle: values.promoTitle.trim(),
+    categoryLabel: promoTypeLabel,
+    categoryTag: "local_business",
+    perk,
+    validFrom: values.eventDate,
+    validUntil: values.eventDate,
+    area: values.area.trim(),
+    studentOnly: values.studentOnly,
+    description: values.description.trim(),
+    imageUrl: values.imageUrl.trim() || DEFAULT_BUSINESS_EVENT_IMAGE,
+    externalUrl: values.externalUrl.trim(),
+    promoType: values.promoType,
+    promoTypeLabel,
+    eventDate: values.eventDate,
+    eventStartTime: values.startTime,
+    eventEndTime: values.endTime,
+    entryInfo: values.entryInfo.trim(),
+    expectedVibe: values.expectedVibe.trim(),
+  };
+  return { payload: payload as Json, pending };
+}
+
 function toggleId(list: string[], id: string): string[] {
   const i = list.indexOf(id);
   if (i === -1) return [...list, id];
@@ -138,13 +207,15 @@ export type AppStore = {
     value: boolean
   ) => void;
   hydrateFromSupabase: (payload: {
-    profile: MockProfileSession | null;
+    profile: MockProfileSession;
     savedEventIds: string[];
     rsvpedEventIds: string[];
     followedVenueIds: string[];
     interests: PuInterestId[];
   }) => void;
   resetToMockDefaults: () => void;
+  /** Clear user-scoped UI state before hydrating a different auth session. */
+  clearSessionScopedState: () => void;
   logout: () => Promise<void>;
 
   submitHostEventForApproval: (
@@ -153,10 +224,25 @@ export type AppStore = {
   submitBusinessDealForApproval: (
     values: BusinessDealFormValues
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
-  approvePendingHostEvent: (id: string, notes?: string) => Promise<void>;
-  rejectPendingHostEvent: (id: string, notes?: string) => Promise<void>;
-  approvePendingBusinessDeal: (id: string, notes?: string) => Promise<void>;
-  rejectPendingBusinessDeal: (id: string, notes?: string) => Promise<void>;
+  submitBusinessEventPromoForApproval: (
+    values: BusinessEventPromoFormValues
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  approvePendingHostEvent: (
+    id: string,
+    notes?: string
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  rejectPendingHostEvent: (
+    id: string,
+    notes?: string
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  approvePendingBusinessDeal: (
+    id: string,
+    notes?: string
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  rejectPendingBusinessDeal: (
+    id: string,
+    notes?: string
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
 };
 
 export const useAppStore = create<AppStore>((set) => ({
@@ -286,13 +372,25 @@ export const useAppStore = create<AppStore>((set) => ({
     }),
 
   hydrateFromSupabase: ({ profile, savedEventIds, rsvpedEventIds, followedVenueIds, interests }) =>
-    set((s) => ({
-      mockProfile: profile ?? s.mockProfile,
-      mockUserRole: profile?.role ?? s.mockUserRole,
+    set(() => ({
+      mockProfile: profile,
+      mockUserRole: profile.role,
       savedEventIds,
       rsvpedEventIds,
       followedVenueIds,
-      selectedInterests: interests.length > 0 ? interests : (profile?.interests ?? s.selectedInterests),
+      selectedInterests:
+        interests.length > 0 ? interests : (profile.interests ?? []),
+    })),
+
+  clearSessionScopedState: () =>
+    set(() => ({
+      savedEventIds: [],
+      rsvpedEventIds: [],
+      savedDealIds: [],
+      selectedInterests: [],
+      mockProfile: { ...DEFAULT_MOCK_PROFILE },
+      mockUserRole: "regular_user",
+      followedVenueIds: [],
     })),
 
   resetToMockDefaults: () =>
@@ -302,6 +400,7 @@ export const useAppStore = create<AppStore>((set) => ({
       selectedInterests: [...DEFAULT_MOCK_PROFILE.interests],
       savedEventIds: [],
       rsvpedEventIds: [],
+      savedDealIds: [],
       followedVenueIds: ["venue-kams", "venue-joes-brewery"],
     })),
 
@@ -313,22 +412,27 @@ export const useAppStore = create<AppStore>((set) => ({
       selectedInterests: [...DEFAULT_MOCK_PROFILE.interests],
       savedEventIds: [],
       rsvpedEventIds: [],
+      savedDealIds: [],
       followedVenueIds: ["venue-kams", "venue-joes-brewery"],
     });
   },
 
   submitHostEventForApproval: async (values) => {
     const pending = hostFormToPending(values);
-    set((s) => ({
-      pendingHostSubmissions: [pending, ...s.pendingHostSubmissions],
-    }));
+    if (!hasSupabaseEnv()) {
+      set((s) => ({
+        pendingHostSubmissions: [pending, ...s.pendingHostSubmissions],
+      }));
+    }
     const result = await persistHostSubmission(
       pending as unknown as import("@/lib/supabase/database.types").Json
     );
     if (result?.error) {
-      set((s) => ({
-        pendingHostSubmissions: s.pendingHostSubmissions.filter((x) => x.id !== pending.id),
-      }));
+      if (!hasSupabaseEnv()) {
+        set((s) => ({
+          pendingHostSubmissions: s.pendingHostSubmissions.filter((x) => x.id !== pending.id),
+        }));
+      }
       return { ok: false as const, error: result.error.message };
     }
     return { ok: true as const };
@@ -339,56 +443,131 @@ export const useAppStore = create<AppStore>((set) => ({
       PORTAL_DEAL_CATEGORY_OPTIONS.find((o) => o.id === values.categoryTag)?.label ??
       String(values.categoryTag);
     const pending = businessFormToPending(values, label);
-    set((s) => ({
-      pendingBusinessSubmissions: [pending, ...s.pendingBusinessSubmissions],
-    }));
+    if (!hasSupabaseEnv()) {
+      set((s) => ({
+        pendingBusinessSubmissions: [pending, ...s.pendingBusinessSubmissions],
+      }));
+    }
     const result = await persistBusinessSubmission(
       pending as unknown as import("@/lib/supabase/database.types").Json
     );
     if (result?.error) {
+      if (!hasSupabaseEnv()) {
+        set((s) => ({
+          pendingBusinessSubmissions: s.pendingBusinessSubmissions.filter(
+            (x) => x.id !== pending.id
+          ),
+        }));
+      }
+      return { ok: false as const, error: result.error.message };
+    }
+    return { ok: true as const };
+  },
+
+  submitBusinessEventPromoForApproval: async (values) => {
+    const validationError = validateBusinessEventPromoSubmission(values);
+    if (validationError) return { ok: false as const, error: validationError };
+    const { payload, pending } = businessEventPromoSubmissionBundle(values);
+    if (!hasSupabaseEnv()) {
       set((s) => ({
-        pendingBusinessSubmissions: s.pendingBusinessSubmissions.filter(
-          (x) => x.id !== pending.id
-        ),
+        pendingBusinessSubmissions: [pending, ...s.pendingBusinessSubmissions],
       }));
+    }
+    const result = await persistBusinessSubmission(payload);
+    if (result?.error) {
+      if (!hasSupabaseEnv()) {
+        set((s) => ({
+          pendingBusinessSubmissions: s.pendingBusinessSubmissions.filter(
+            (x) => x.id !== pending.id
+          ),
+        }));
+      }
       return { ok: false as const, error: result.error.message };
     }
     return { ok: true as const };
   },
 
   approvePendingHostEvent: async (id, notes) => {
+    if (hasSupabaseEnv()) {
+      const published = await approveAndPublishHostSubmission(id, notes);
+      if (published.error) {
+        return { ok: false as const, error: published.error.message };
+      }
+      set((s) => ({
+        pendingHostSubmissions: s.pendingHostSubmissions.filter((x) => x.id !== id),
+        portalApprovedToday: s.portalApprovedToday + 1,
+      }));
+      return { ok: true as const };
+    }
     set((s) => ({
       pendingHostSubmissions: s.pendingHostSubmissions.filter((x) => x.id !== id),
       portalApprovedToday: s.portalApprovedToday + 1,
     }));
-    await persistHostModeration(id, "approved", notes);
+    return { ok: true as const };
   },
 
   rejectPendingHostEvent: async (id, notes) => {
+    if (hasSupabaseEnv()) {
+      const res = await persistHostModeration(id, "rejected", notes);
+      if (res && "error" in res && res.error) {
+        return { ok: false as const, error: res.error.message };
+      }
+      set((s) => ({
+        pendingHostSubmissions: s.pendingHostSubmissions.filter((x) => x.id !== id),
+        portalFlaggedUpdates: s.portalFlaggedUpdates + 1,
+      }));
+      return { ok: true as const };
+    }
     set((s) => ({
       pendingHostSubmissions: s.pendingHostSubmissions.filter((x) => x.id !== id),
       portalFlaggedUpdates: s.portalFlaggedUpdates + 1,
     }));
-    await persistHostModeration(id, "rejected", notes);
+    return { ok: true as const };
   },
 
   approvePendingBusinessDeal: async (id, notes) => {
+    if (hasSupabaseEnv()) {
+      const published = await approveAndPublishBusinessSubmission(id, notes);
+      if (published.error) {
+        return { ok: false as const, error: published.error.message };
+      }
+      set((s) => ({
+        pendingBusinessSubmissions: s.pendingBusinessSubmissions.filter(
+          (x) => x.id !== id
+        ),
+        portalApprovedToday: s.portalApprovedToday + 1,
+      }));
+      return { ok: true as const };
+    }
     set((s) => ({
       pendingBusinessSubmissions: s.pendingBusinessSubmissions.filter(
         (x) => x.id !== id
       ),
       portalApprovedToday: s.portalApprovedToday + 1,
     }));
-    await persistBusinessModeration(id, "approved", notes);
+    return { ok: true as const };
   },
 
   rejectPendingBusinessDeal: async (id, notes) => {
+    if (hasSupabaseEnv()) {
+      const res = await persistBusinessModeration(id, "rejected", notes);
+      if (res && "error" in res && res.error) {
+        return { ok: false as const, error: res.error.message };
+      }
+      set((s) => ({
+        pendingBusinessSubmissions: s.pendingBusinessSubmissions.filter(
+          (x) => x.id !== id
+        ),
+        portalFlaggedUpdates: s.portalFlaggedUpdates + 1,
+      }));
+      return { ok: true as const };
+    }
     set((s) => ({
       pendingBusinessSubmissions: s.pendingBusinessSubmissions.filter(
         (x) => x.id !== id
       ),
       portalFlaggedUpdates: s.portalFlaggedUpdates + 1,
     }));
-    await persistBusinessModeration(id, "rejected", notes);
+    return { ok: true as const };
   },
 }));

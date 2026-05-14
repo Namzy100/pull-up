@@ -70,3 +70,19 @@ export async function getOptionalSessionProfile() {
     hasProfile: true,
   };
 }
+
+/** Server guard for `/admin`: must be signed in with `profiles.role = admin`. */
+export async function requireAdminPageAccess() {
+  if (!hasSupabaseEnv()) {
+    redirect("/");
+  }
+  const { supabase, user } = await requireAuth("/admin");
+  if (!supabase || !user) {
+    redirect("/login?next=%2Fadmin");
+  }
+  const profile = await getProfileById(supabase, user.id);
+  if (!profile || profile.role !== "admin") {
+    redirect("/");
+  }
+  return { supabase, user, profile };
+}

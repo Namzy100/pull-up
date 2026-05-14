@@ -1,9 +1,22 @@
+/**
+ * Server-only data loaders for the Tonight feed, deals, and event detail routes.
+ * Client components and hooks must not import this module — use `browser-feed.ts` with
+ * `createSupabaseBrowserClient` (see `hooks/use-campus-live-subscription.ts`).
+ */
 import { MOCK_DEALS } from "@/lib/deals-data";
 import { MOCK_EVENTS } from "@/lib/mock-data";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { mapDbDealToPuDeal, mapDbEventToPuEvent } from "@/lib/supabase/feed-mappers";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { listApprovedDeals, listApprovedEvents, listVenues } from "@/lib/supabase/repositories";
+import {
+  getEventById,
+  listApprovedDeals,
+  listApprovedEvents,
+  listVenues,
+} from "@/lib/supabase/repositories";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { PuDeal, PuEvent } from "@/lib/types";
+
+export { mapDbDealToPuDeal, mapDbEventToPuEvent } from "@/lib/supabase/feed-mappers";
 
 export async function loadFeedEvents(): Promise<PuEvent[]> {
   if (!hasSupabaseEnv()) return MOCK_EVENTS;
@@ -14,41 +27,10 @@ export async function loadFeedEvents(): Promise<PuEvent[]> {
   ]);
   if (rows.length === 0) return MOCK_EVENTS;
   const venueMap = new Map(venues.map((v) => [v.id, v]));
-  return rows.map((row) => {
-    const venue = venueMap.get(row.venue_id);
-    const start = new Date(row.starts_at);
-    const end = new Date(row.ends_at);
-    const coverCents =
-      row.cover_cents ?? (row.entry_type === "free" ? 0 : null);
-    return {
-      id: row.id,
-      venueId: row.venue_id,
-      title: row.title,
-      category: row.category,
-      categoryLabel: row.category.replaceAll("_", " "),
-      area: venue?.area ?? "Campus",
-      venueName: venue?.name ?? "Campus Venue",
-      startsAt: start.toISOString(),
-      endsAt: end.toISOString(),
-      coverCents,
-      entryType: row.entry_type,
-      stagRule: row.stag_rule,
-      ageRestriction: row.age_restriction,
-      vibeMusic: row.vibe_music,
-      crowdStatus: "active",
-      urgencyLabels: ["Verified listing"],
-      imageUrl: row.image_url,
-      imageAlt: row.title,
-      heatScore: 70,
-      liveNow: start <= new Date() && end >= new Date(),
-      savesCount: 0,
-      spottingCount: 0,
-      pullUpsLastHour: 0,
-      description: row.description,
-      hostLabel: venue?.name ?? "Verified host",
-      externalUrl: row.external_url ?? undefined,
-    };
-  });
+  const now = Date.now();
+  return rows
+    .filter((row) => new Date(row.ends_at).getTime() > now)
+    .map((row) => mapDbEventToPuEvent(row, venueMap.get(row.venue_id)));
 }
 
 export async function loadDeals(): Promise<PuDeal[]> {
@@ -60,26 +42,22 @@ export async function loadDeals(): Promise<PuDeal[]> {
   ]);
   if (rows.length === 0) return MOCK_DEALS;
   const venueMap = new Map(venues.map((v) => [v.id, v]));
-  return rows.map((row) => {
-    const venue = venueMap.get(row.venue_id);
-    return {
-      id: row.id,
-      venueId: row.venue_id,
-      title: row.title,
-      venueLabel: venue?.name ?? "Campus Venue",
-      area: venue?.area ?? "Campus",
-      perk: row.perk,
-      windowLabel: `${row.valid_from} - ${row.valid_until}`,
-      urgencyLabel: "Verified deal",
-      imageUrl: row.image_url,
-      imageAlt: row.title,
-      categoryLabel: row.category_tag.replaceAll("_", " "),
-      filterTags: [row.category_tag],
-      urgencyScore: 70,
-      savesCount: 0,
-      claimsLastHour: 0,
-      watchingCount: 0,
-      studentOnly: row.student_only,
-    };
-  });
+  const today = new Date().toISOString().slice(0, 10);
+  return rows
+    .filter((row) => String(row.valid_until) >= today)
+    .map((row) => mapDbDealToPuDeal(row, venueMap.get(row.venue_id)));
+}
+
+export async function loadEventDetail(id: string): Promise<PuEvent | null> {
+  if (!hasSupabaseEnv()) {
+    return MOCK_EVENTS.find((e) => e.id === id) ?? null;
+  }
+  const supabase = await createSupabaseServerClient();
+  const row = await getEventById(supabase, id);
+  if (!row) {
+    return MOCK_EVENTS.find((e) => e.id === id) ?? null;
+  }
+  const venues = await listVenues(supabase);
+  const venueMap = new Map(venues.map((v) => [v.id, v]));
+  return mapDbEventToPuEvent(row, venueMap.get(row.venue_id));
 }

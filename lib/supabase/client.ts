@@ -4,11 +4,8 @@ import { createBrowserClient } from "@supabase/ssr";
 
 import { getSupabasePublicEnv } from "@/lib/supabase/env";
 
-let browserClient: ReturnType<typeof createBrowserClient> | null = null;
-
+/** New instance per call so tab never reuses a client bound to a stale auth identity. */
 export function createSupabaseBrowserClient() {
-  if (browserClient) return browserClient;
   const { url, anonKey } = getSupabasePublicEnv();
-  browserClient = createBrowserClient(url, anonKey);
-  return browserClient;
+  return createBrowserClient(url, anonKey);
 }

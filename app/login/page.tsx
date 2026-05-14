@@ -43,7 +43,28 @@ export default function LoginPage() {
       setBusy(false);
       return;
     }
-    router.replace(nextPath);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    let destination = nextPath;
+    if (user) {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (prof?.role === "admin") {
+        const allowConsumerSurface =
+          nextPath.startsWith("/admin") ||
+          nextPath.includes("previewAs=") ||
+          nextPath.includes("preview=user") ||
+          nextPath.includes("preview%3Duser");
+        if (!allowConsumerSurface) {
+          destination = "/admin";
+        }
+      }
+    }
+    router.replace(destination);
     router.refresh();
   }
 

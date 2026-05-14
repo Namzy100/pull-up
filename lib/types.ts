@@ -110,6 +110,8 @@ export interface PuDeal {
   watchingCount: number;
   /** Secondary line near CTA, e.g. student ID */
   studentOnly?: boolean;
+  /** YYYY-MM-DD end of validity when from Supabase */
+  validUntil?: string;
 }
 
 export interface PuEvent {
@@ -139,6 +141,8 @@ export interface PuEvent {
   liveNow: boolean;
   /** Bookmark-style momentum */
   savesCount: number;
+  /** RSVP headcount when synced from Supabase. */
+  rsvpsCount?: number;
   /** Eyes on it tonight */
   spottingCount: number;
   /** \"Pulling up\" telemetry (mock) */
@@ -147,6 +151,12 @@ export interface PuEvent {
   fillPressurePct?: number;
   /** Top ranks on campus tonight (mock); omit if not trending */
   campusTrendRank?: number;
+  /** Live momentum label (Building, Packed, …) */
+  momentumLabel?: string;
+  /** Combined trending score for section ordering */
+  trendingScore?: number;
+  /** Row touch time for velocity decay (ISO) */
+  updatedAt?: string;
   /** Narrative vibe + logistics */
   description: string;
   /** Who’s putting it on (chapter, promoter, venue, org) — no public roster */

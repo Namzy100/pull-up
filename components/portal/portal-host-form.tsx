@@ -42,7 +42,11 @@ const emptyHost: HostEventFormValues = {
 const inputClass =
   "h-10 rounded-xl border-pu-border bg-black/45 text-white placeholder:text-white/38 md:text-sm";
 
-export function PortalHostForm() {
+type PortalHostFormProps = {
+  onSubmitted?: () => void | Promise<void>;
+};
+
+export function PortalHostForm({ onSubmitted }: PortalHostFormProps = {}) {
   const submit = useAppStore((s) => s.submitHostEventForApproval);
   const [values, setValues] = useState<HostEventFormValues>(emptyHost);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +75,7 @@ export function PortalHostForm() {
     setValues(emptyHost);
     setDone(true);
     setError(null);
+    await onSubmitted?.();
   }
 
   return (
@@ -82,7 +87,7 @@ export function PortalHostForm() {
         <CalendarRange className="mt-0.5 size-5 shrink-0 text-pu-magenta" aria-hidden />
         <div>
           <h2 className="font-heading text-lg font-extrabold tracking-tight text-white">
-            Submit a move
+            Create event
           </h2>
           <p className="pu-meta mt-1">
             Verified hosts control the pulse. Everything here goes to admin review
@@ -290,7 +295,7 @@ export function PortalHostForm() {
         className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-pu-magenta to-pu-amber font-black uppercase tracking-[0.08em] text-white shadow-[0_0_22px_-8px_oklch(0.7_0.29_328/0.45)]"
       >
         <Send className="mr-2 size-4" aria-hidden />
-        Submit for approval
+        Submit event
       </Button>
     </form>
   );

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Bookmark, CalendarCheck, MapPin, Sparkles, Ticket } from "lucide-react";
 
@@ -17,6 +18,7 @@ import {
   formatCurrencyFromCents,
   formatEventTimeRange,
 } from "@/lib/event-utils";
+import { recordEventSurfaceView } from "@/lib/supabase/client-persistence";
 import { useAppStore } from "@/store/use-app-store";
 
 export type EventCardLayout = "feed" | "carousel";
@@ -42,6 +44,30 @@ export function EventCard({
   const rsvped = useAppStore((s) => s.rsvpedEventIds.includes(event.id));
   const toggleSaveEvent = useAppStore((s) => s.toggleSaveEvent);
   const toggleRsvpEvent = useAppStore((s) => s.toggleRsvpEvent);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const el = rootRef.current;
+    if (!el) return;
+    const key = `pu_view_${event.id}`;
+    if (window.sessionStorage.getItem(key)) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.32) {
+            window.sessionStorage.setItem(key, "1");
+            void recordEventSurfaceView(event.id);
+            obs.disconnect();
+            break;
+          }
+        }
+      },
+      { threshold: [0, 0.32, 0.55] }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [event.id]);
 
   const coverLabel =
     event.entryType === "cover"
@@ -52,6 +78,7 @@ export function EventCard({
 
   return (
     <motion.div
+      ref={rootRef}
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
@@ -176,7 +203,11 @@ export function EventCard({
                   </Badge>
                 </div>
                 <div className="pointer-events-none">
-                  <CrowdIndicator status={event.crowdStatus} compact={isCarousel} />
+                  <CrowdIndicator
+                    status={event.crowdStatus}
+                    compact={isCarousel}
+                    labelOverride={event.momentumLabel}
+                  />
                 </div>
               </div>
 

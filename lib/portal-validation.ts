@@ -1,4 +1,8 @@
-import type { BusinessDealFormValues, HostEventFormValues } from "@/lib/portal-types";
+import type {
+  BusinessDealFormValues,
+  BusinessEventPromoFormValues,
+  HostEventFormValues,
+} from "@/lib/portal-types";
 
 function validHttpUrl(value: string): boolean {
   try {
@@ -30,6 +34,27 @@ export function validateHostSubmission(values: HostEventFormValues): string | nu
     if (!Number.isFinite(asNumber) || asNumber < 0 || asNumber > 300) {
       return "Cover price must be a number between 0 and 300.";
     }
+  }
+  return null;
+}
+
+export function validateBusinessEventPromoSubmission(
+  values: BusinessEventPromoFormValues
+): string | null {
+  if (!values.businessName.trim()) return "Add business name.";
+  if (!values.promoTitle.trim()) return "Add promo or event title.";
+  if (!values.eventDate || !values.startTime || !values.endTime) {
+    return "Add date and start/end times.";
+  }
+  if (!values.area.trim()) return "Add location or area.";
+  if (values.description.trim().length < 12) {
+    return "Description should be at least 12 characters.";
+  }
+  if (values.imageUrl.trim() && !validHttpUrl(values.imageUrl.trim())) {
+    return "Image URL must be valid (http/https).";
+  }
+  if (values.externalUrl.trim() && !validHttpUrl(values.externalUrl.trim())) {
+    return "External URL must be valid (http/https).";
   }
   return null;
 }

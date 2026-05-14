@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,12 +15,9 @@ import {
 } from "@/lib/supabase/client-persistence";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
-import {
-  createAccessRequest,
-  replaceInterests,
-  upsertProfile,
-} from "@/lib/supabase/repositories";
-import type { PuInterestId, RequestedRole } from "@/lib/types";
+import { formatSupabasePostgrestError } from "@/lib/supabase/postgrest-error";
+import { getProfileById, replaceInterests, upsertProfile } from "@/lib/supabase/repositories";
+import type { PuInterestId } from "@/lib/types";
 import { useAppStore } from "@/store/use-app-store";
 
 const CAMPUS_OPTIONS: readonly string[] = [
@@ -37,50 +34,79 @@ export default function OnboardingPage() {
   const [fullName, setFullName] = useState("");
   const [campus, setCampus] = useState(CAMPUS_OPTIONS[0]);
   const [interests, setInterests] = useState<PuInterestId[]>([]);
-  const [accountType, setAccountType] = useState<RequestedRole>("none");
-  const [businessName, setBusinessName] = useState("");
-  const [businessType, setBusinessType] = useState("");
-  const [businessWebsite, setBusinessWebsite] = useState("");
-  const [businessContact, setBusinessContact] = useState("");
-  const [organizationName, setOrganizationName] = useState("");
-  const [organizationType, setOrganizationType] = useState("");
-  const [verificationNotes, setVerificationNotes] = useState("");
   const [consentAnalytics, setConsentAnalytics] = useState(false);
   const [consentPersonalization, setConsentPersonalization] = useState(false);
   const [consentLocation, setConsentLocation] = useState(false);
   const [consentMarketing, setConsentMarketing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bootLoading, setBootLoading] = useState(true);
+
+  const loadProfile = useCallback(async () => {
+    if (!envConfigured) {
+      return;
+    }
+    const supabase = createSupabaseBrowserClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      router.replace("/login?next=/onboarding");
+      return;
+    }
+    const row = await getProfileById(supabase, user.id);
+    if (!row) {
+      router.replace("/signup");
+      return;
+    }
+    if (row.role !== "regular_user") {
+      router.replace("/profile");
+      return;
+    }
+    if (row.requested_role === "host" || row.requested_role === "business") {
+      if (row.verification_status === "pending") {
+        router.replace("/onboarding/pending");
+        return;
+      }
+      if (row.verification_status === "rejected") {
+        router.replace("/onboarding/rejected");
+        return;
+      }
+    }
+    setUsername(row.username);
+    setFullName(row.full_name ?? "");
+    setCampus(row.campus ?? CAMPUS_OPTIONS[0]);
+    setInterests((row.interests ?? []) as PuInterestId[]);
+    setConsentAnalytics(row.consent_analytics);
+    setConsentPersonalization(row.consent_personalization);
+    setConsentLocation(row.consent_location);
+    setConsentMarketing(row.consent_marketing);
+    if (row.onboarding_complete) {
+      router.replace("/profile");
+      return;
+    }
+    return "ready" as const;
+  }, [envConfigured, router]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      if (!envConfigured) {
+        if (!cancelled) setBootLoading(false);
+        return;
+      }
+      const outcome = await loadProfile();
+      if (cancelled) return;
+      if (outcome === "ready") setBootLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [envConfigured, loadProfile]);
 
   const canSubmit = useMemo(
-    () => {
-      if (username.trim().length < 3 || interests.length === 0) return false;
-      if (accountType === "business") {
-        return (
-          businessName.trim().length > 1 &&
-          businessType.trim().length > 1 &&
-          businessContact.trim().length > 3
-        );
-      }
-      if (accountType === "host") {
-        return (
-          organizationName.trim().length > 1 &&
-          organizationType.trim().length > 1 &&
-          businessContact.trim().length > 3
-        );
-      }
-      return true;
-    },
-    [
-      accountType,
-      businessContact,
-      businessName,
-      businessType,
-      interests.length,
-      organizationName,
-      organizationType,
-      username,
-    ]
+    () => username.trim().length >= 3 && interests.length > 0,
+    [username, interests.length]
   );
 
   function toggleInterest(interest: PuInterestId) {
@@ -108,21 +134,14 @@ export default function OnboardingPage() {
       router.replace("/login?next=/onboarding");
       return;
     }
-    const { error: profileError } = await upsertProfile(supabase, {
+    const { data: profileRow, error: profileError } = await upsertProfile(supabase, {
       id: user.id,
-      username: username.trim(),
+      username: username.trim().toLowerCase(),
       full_name: fullName.trim() || null,
       campus,
       role: "regular_user",
-      requested_role: accountType,
-      verification_status: accountType === "none" ? "none" : "pending",
-      business_name: businessName.trim() || null,
-      business_type: businessType.trim() || null,
-      business_website: businessWebsite.trim() || null,
-      business_contact: businessContact.trim() || null,
-      organization_name: organizationName.trim() || null,
-      organization_type: organizationType.trim() || null,
-      verification_notes: verificationNotes.trim() || null,
+      requested_role: "none",
+      verification_status: "none",
       onboarding_complete: true,
       interests,
       consent_analytics: consentAnalytics,
@@ -131,30 +150,26 @@ export default function OnboardingPage() {
       consent_marketing: consentMarketing,
     });
     if (profileError) {
-      setError(profileError.message);
+      const detail = formatSupabasePostgrestError(profileError);
+      const email = user.email ?? null;
+      const safeEmail = email
+        ? `${email.slice(0, 2)}***@${email.split("@")[1] ?? "hidden"}`
+        : null;
+      console.error("[onboarding] upsertProfile failed", {
+        authUserId: user.id,
+        email: safeEmail,
+        targetProfileId: user.id,
+        error: detail,
+        code: profileError.code,
+      });
+      setError(detail);
       setBusy(false);
       return;
     }
-    if (accountType !== "none") {
-      const { error: requestError } = await createAccessRequest(
-        supabase,
-        user.id,
-        accountType,
-        verificationNotes.trim(),
-        {
-          businessName: businessName.trim() || null,
-          businessType: businessType.trim() || null,
-          businessWebsite: businessWebsite.trim() || null,
-          businessContact: businessContact.trim() || null,
-          organizationName: organizationName.trim() || null,
-          organizationType: organizationType.trim() || null,
-        }
-      );
-      if (requestError) {
-        setError(requestError.message);
-        setBusy(false);
-        return;
-      }
+    if (!profileRow) {
+      setError("Profile save returned no row.");
+      setBusy(false);
+      return;
     }
     const interestsResult = await replaceInterests(supabase, user.id, interests);
     if (interestsResult.error) {
@@ -174,6 +189,14 @@ export default function OnboardingPage() {
     router.refresh();
   }
 
+  if (bootLoading) {
+    return (
+      <div className="pu-screen flex min-h-dvh items-center justify-center px-4">
+        <p className="pu-meta">Loading your profile…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="pu-screen min-h-dvh px-4 py-10">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[55vh] bg-[radial-gradient(ellipse_80%_55%_at_50%_-12%,oklch(0.55_0.22_328/0.24),transparent_62%)]" />
@@ -182,10 +205,10 @@ export default function OnboardingPage() {
         className="relative mx-auto w-full max-w-lg space-y-5 rounded-2xl border border-pu-border bg-gradient-to-b from-pu-surface/90 to-black p-5"
       >
         <div className="space-y-2">
-          <p className="pu-eyebrow">Set up identity</p>
-          <h1 className="pu-display text-[2rem]">Onboarding</h1>
+          <p className="pu-eyebrow">Almost there</p>
+          <h1 className="pu-display text-[2rem]">Student onboarding</h1>
           <p className="pu-meta">
-            Consent is opt-in only. Nothing is enabled unless you choose it.
+            Tune campus, interests, and optional consent. Everything optional stays opt-in.
           </p>
           {!envConfigured ? (
             <p className="text-xs font-semibold text-pu-urgent-glow">
@@ -202,10 +225,11 @@ export default function OnboardingPage() {
             onChange={(e) => setUsername(e.target.value)}
             className="h-11 rounded-xl border-pu-border bg-black/45"
             required
+            minLength={3}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="full-name">Full name</Label>
+          <Label htmlFor="full-name">Display name</Label>
           <Input
             id="full-name"
             value={fullName}
@@ -227,30 +251,6 @@ export default function OnboardingPage() {
               </option>
             ))}
           </select>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Account type</Label>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            <AccountTypeButton
-              active={accountType === "none"}
-              label="Student / Regular"
-              onClick={() => setAccountType("none")}
-            />
-            <AccountTypeButton
-              active={accountType === "host"}
-              label="Host / Org / Frat"
-              onClick={() => setAccountType("host")}
-            />
-            <AccountTypeButton
-              active={accountType === "business"}
-              label="Local Business"
-              onClick={() => setAccountType("business")}
-            />
-          </div>
-          <p className="text-xs font-semibold text-white/60">
-            Verification keeps the pulse trusted.
-          </p>
         </div>
 
         <div className="space-y-2">
@@ -276,85 +276,12 @@ export default function OnboardingPage() {
           </div>
         </div>
 
-        {accountType === "business" ? (
-          <div className="space-y-3 rounded-xl border border-pu-border bg-black/35 p-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-white/65">
-              Business verification
-            </p>
-            <Input
-              value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
-              className="h-10 rounded-xl border-pu-border bg-black/45"
-              placeholder="Business name"
-            />
-            <Input
-              value={businessType}
-              onChange={(e) => setBusinessType(e.target.value)}
-              className="h-10 rounded-xl border-pu-border bg-black/45"
-              placeholder="Business type"
-            />
-            <Input
-              value={businessWebsite}
-              onChange={(e) => setBusinessWebsite(e.target.value)}
-              className="h-10 rounded-xl border-pu-border bg-black/45"
-              placeholder="Website or Instagram"
-            />
-            <Input
-              value={businessContact}
-              onChange={(e) => setBusinessContact(e.target.value)}
-              className="h-10 rounded-xl border-pu-border bg-black/45"
-              placeholder="Contact email/phone"
-            />
-            <Input
-              value={verificationNotes}
-              onChange={(e) => setVerificationNotes(e.target.value)}
-              className="h-10 rounded-xl border-pu-border bg-black/45"
-              placeholder="Verification notes (optional)"
-            />
-            <p className="text-xs font-semibold text-white/60">
-              Businesses can drop offers once approved.
-            </p>
-          </div>
-        ) : null}
-
-        {accountType === "host" ? (
-          <div className="space-y-3 rounded-xl border border-pu-border bg-black/35 p-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-white/65">
-              Host verification
-            </p>
-            <Input
-              value={organizationName}
-              onChange={(e) => setOrganizationName(e.target.value)}
-              className="h-10 rounded-xl border-pu-border bg-black/45"
-              placeholder="Organization / chapter name"
-            />
-            <Input
-              value={organizationType}
-              onChange={(e) => setOrganizationType(e.target.value)}
-              className="h-10 rounded-xl border-pu-border bg-black/45"
-              placeholder="Org type"
-            />
-            <Input
-              value={businessContact}
-              onChange={(e) => setBusinessContact(e.target.value)}
-              className="h-10 rounded-xl border-pu-border bg-black/45"
-              placeholder="Contact email/phone"
-            />
-            <Input
-              value={verificationNotes}
-              onChange={(e) => setVerificationNotes(e.target.value)}
-              className="h-10 rounded-xl border-pu-border bg-black/45"
-              placeholder="Affiliation notes (optional)"
-            />
-            <p className="text-xs font-semibold text-white/60">
-              We review host accounts to keep the feed trusted.
-            </p>
-          </div>
-        ) : null}
-
         <div className="space-y-3 rounded-xl border border-pu-border bg-black/35 p-4">
           <p className="text-xs font-bold uppercase tracking-wide text-white/65">
             Privacy consent (optional)
+          </p>
+          <p className="text-[11px] font-medium text-white/45">
+            Required notices live in Terms — these toggles are optional.
           </p>
           <ConsentRow
             label="Analytics"
@@ -389,7 +316,7 @@ export default function OnboardingPage() {
           disabled={busy || !canSubmit}
           className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-pu-magenta to-pu-amber font-black uppercase tracking-[0.08em]"
         >
-          Finish onboarding
+          {busy ? "Saving…" : "Enter Pull Up"}
         </Button>
         <p className="text-center text-xs font-semibold text-white/55">
           Privacy-first beta. See{" "}
@@ -404,30 +331,6 @@ export default function OnboardingPage() {
         </p>
       </form>
     </div>
-  );
-}
-
-function AccountTypeButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={
-        active
-          ? "rounded-xl border border-pu-magenta/55 bg-pu-magenta-dim/30 px-3 py-2 text-xs font-black uppercase tracking-wide text-white"
-          : "rounded-xl border border-pu-border bg-black/35 px-3 py-2 text-xs font-black uppercase tracking-wide text-white/70"
-      }
-    >
-      {label}
-    </button>
   );
 }
 

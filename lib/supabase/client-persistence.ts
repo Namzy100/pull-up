@@ -1,12 +1,20 @@
 "use client";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import type { Json } from "@/lib/supabase/database.types";
+import { hasSupabaseEnv } from "@/lib/supabase/env";
 import {
+  publishBusinessSubmissionForApproval,
+  publishHostSubmissionToEvent,
+} from "@/lib/supabase/cms-publish";
+import { formatSupabasePostgrestError } from "@/lib/supabase/postgrest-error";
+import type { Database, Json } from "@/lib/supabase/database.types";
+import {
+  createAccessRequest,
   createConsentEvent,
   createBusinessSubmission,
   createHostSubmission,
   getProfileById,
+  insertEngagementEvent,
   listFollowedVenueIds,
   listInterests,
   listRsvpEventIds,
@@ -77,12 +85,32 @@ export async function syncProfileStateFromSupabase() {
   };
 }
 
+export async function recordEventSurfaceView(eventId: string) {
+  const userId = await getAuthedUserId();
+  if (!userId || !hasSupabaseEnv()) return;
+  const supabase = createSupabaseBrowserClient();
+  void insertEngagementEvent(supabase, {
+    user_id: userId,
+    subject_type: "event",
+    subject_id: eventId,
+    action: "view",
+  });
+}
+
 export async function persistSavedEvent(eventId: string, shouldSave: boolean) {
   const userId = await getAuthedUserId();
   if (!userId) return { error: null };
   const supabase = createSupabaseBrowserClient();
   const result = await toggleSavedEvent(supabase, userId, eventId, shouldSave);
   if (result.error) console.error("persistSavedEvent failed", result.error.message);
+  else if (hasSupabaseEnv()) {
+    void insertEngagementEvent(supabase, {
+      user_id: userId,
+      subject_type: "event",
+      subject_id: eventId,
+      action: shouldSave ? "save" : "unsave",
+    });
+  }
   return result;
 }
 
@@ -92,6 +120,14 @@ export async function persistRsvp(eventId: string, shouldRsvp: boolean) {
   const supabase = createSupabaseBrowserClient();
   const result = await toggleRsvp(supabase, userId, eventId, shouldRsvp);
   if (result.error) console.error("persistRsvp failed", result.error.message);
+  else if (hasSupabaseEnv()) {
+    void insertEngagementEvent(supabase, {
+      user_id: userId,
+      subject_type: "event",
+      subject_id: eventId,
+      action: shouldRsvp ? "rsvp" : "unrsvp",
+    });
+  }
   return result;
 }
 
@@ -101,6 +137,14 @@ export async function persistVenueFollow(venueId: string, shouldFollow: boolean)
   const supabase = createSupabaseBrowserClient();
   const result = await toggleVenueFollow(supabase, userId, venueId, shouldFollow);
   if (result.error) console.error("persistVenueFollow failed", result.error.message);
+  else if (hasSupabaseEnv()) {
+    void insertEngagementEvent(supabase, {
+      user_id: userId,
+      subject_type: "venue",
+      subject_id: venueId,
+      action: shouldFollow ? "follow" : "unfollow",
+    });
+  }
   return result;
 }
 
@@ -114,9 +158,12 @@ export async function persistInterests(interests: PuInterestId[]) {
 }
 
 export async function persistProfile(profile: MockProfileSession) {
-  const userId = await getAuthedUserId();
-  if (!userId) return { error: null };
   const supabase = createSupabaseBrowserClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const userId = user?.id ?? null;
+  if (!userId) return { error: null };
   const result = await upsertProfile(supabase, {
     id: userId,
     username: profile.username,
@@ -140,7 +187,19 @@ export async function persistProfile(profile: MockProfileSession) {
     consent_location: profile.consentLocation,
     consent_marketing: profile.consentMarketing,
   });
-  if (result.error) console.error("persistProfile failed", result.error.message);
+  if (result.error) {
+    const email = user?.email ?? null;
+    const safeEmail = email
+      ? `${email.slice(0, 2)}***@${email.split("@")[1] ?? "hidden"}`
+      : null;
+    console.error("[persistProfile]", {
+      authUserId: userId,
+      email: safeEmail,
+      targetProfileId: userId,
+      error: formatSupabasePostgrestError(result.error),
+      code: result.error.code,
+    });
+  }
   return result;
 }
 
@@ -173,8 +232,8 @@ export async function persistHostModeration(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return;
-  await moderateHostSubmission(
+  if (!user) return { error: { message: "Not signed in." } };
+  return moderateHostSubmission(
     supabase,
     clientSubmissionId,
     user.id,
@@ -192,8 +251,8 @@ export async function persistBusinessModeration(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return;
-  await moderateBusinessSubmission(
+  if (!user) return { error: { message: "Not signed in." } };
+  return moderateBusinessSubmission(
     supabase,
     clientSubmissionId,
     user.id,
@@ -202,10 +261,53 @@ export async function persistBusinessModeration(
   );
 }
 
+export async function approveAndPublishHostSubmission(
+  clientSubmissionId: string,
+  moderationNotes?: string
+): Promise<{ error: { message: string } | null }> {
+  const supabase = createSupabaseBrowserClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: { message: "Not signed in." } };
+  const published = await publishHostSubmissionToEvent(
+    supabase,
+    clientSubmissionId,
+    user.id,
+    moderationNotes
+  );
+  if (!published.ok) return { error: { message: published.error } };
+  return { error: null };
+}
+
+export async function approveAndPublishBusinessSubmission(
+  clientSubmissionId: string,
+  moderationNotes?: string
+): Promise<{ error: { message: string } | null }> {
+  const supabase = createSupabaseBrowserClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: { message: "Not signed in." } };
+  const published = await publishBusinessSubmissionForApproval(
+    supabase,
+    clientSubmissionId,
+    user.id,
+    moderationNotes
+  );
+  if (!published.ok) return { error: { message: published.error } };
+  return { error: null };
+}
+
+export type ConsentEventType =
+  Database["public"]["Tables"]["consent_events"]["Insert"]["consent_type"];
+export type ConsentEventSource =
+  Database["public"]["Tables"]["consent_events"]["Insert"]["source"];
+
 export async function persistConsentEvent(
-  consentType: "analytics" | "personalization" | "location" | "marketing",
+  consentType: ConsentEventType,
   value: boolean,
-  source: "onboarding" | "profile_settings"
+  source: ConsentEventSource
 ) {
   const userId = await getAuthedUserId();
   if (!userId) return;
@@ -240,10 +342,40 @@ export async function moderateAccessRequestAndProfile(
   if (moderation.error) return moderation;
   const profileUpdate = await updateProfileVerification(supabase, targetUserId, {
     role: status === "approved" ? requestedRole : "regular_user",
-    requestedRole,
+    requestedRole: status === "approved" ? "none" : requestedRole,
     verificationStatus: status === "approved" ? "approved" : "rejected",
     verificationNotes: notes ?? null,
   });
   if (profileUpdate.error) return profileUpdate;
   return { error: null };
+}
+
+/** Request host/business access from /submit (updates profile + creates access_requests). */
+export async function requestElevatedAccess(
+  requestedRole: "host" | "business",
+  note: string,
+  metadata?: Json | null
+) {
+  const supabase = createSupabaseBrowserClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: { message: "Not signed in." } };
+  const v = await updateProfileVerification(supabase, user.id, {
+    role: "regular_user",
+    requestedRole: requestedRole,
+    verificationStatus: "pending",
+    verificationNotes: null,
+  });
+  if (v.error) return v;
+  return createAccessRequest(supabase, user.id, requestedRole, note, metadata ?? undefined);
+}
+
+/** Re-submit after rejection (same persistence path as a fresh request). */
+export async function resubmitElevatedAccess(
+  requestedRole: "host" | "business",
+  note: string,
+  metadata?: Json | null
+) {
+  return requestElevatedAccess(requestedRole, note, metadata);
 }

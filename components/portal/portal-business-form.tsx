@@ -39,7 +39,11 @@ const emptyDeal: BusinessDealFormValues = {
 const inputClass =
   "h-10 rounded-xl border-pu-border bg-black/45 text-white placeholder:text-white/38 md:text-sm";
 
-export function PortalBusinessForm() {
+type PortalBusinessFormProps = {
+  onSubmitted?: () => void | Promise<void>;
+};
+
+export function PortalBusinessForm({ onSubmitted }: PortalBusinessFormProps = {}) {
   const submit = useAppStore((s) => s.submitBusinessDealForApproval);
   const [values, setValues] = useState<BusinessDealFormValues>(emptyDeal);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +72,7 @@ export function PortalBusinessForm() {
     setValues(emptyDeal);
     setDone(true);
     setError(null);
+    await onSubmitted?.();
   }
 
   return (
@@ -79,11 +84,11 @@ export function PortalBusinessForm() {
         <Store className="mt-0.5 size-5 shrink-0 text-pu-amber" aria-hidden />
         <div>
           <h2 className="font-heading text-lg font-extrabold tracking-tight text-white">
-            Drop a deal
+            Create deal
           </h2>
           <p className="pu-meta mt-1">
-            Businesses can drop offers when campus is moving. Submissions stay in
-            review until an admin clears them.
+            Drop an offer for campus. Submissions stay in review until an admin clears
+            them.
           </p>
         </div>
       </div>
@@ -236,7 +241,7 @@ export function PortalBusinessForm() {
         className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-pu-magenta to-pu-amber font-black uppercase tracking-[0.08em] text-white shadow-[0_0_22px_-8px_oklch(0.7_0.29_328/0.45)]"
       >
         <Send className="mr-2 size-4" aria-hidden />
-        Submit deal for approval
+        Submit deal
       </Button>
     </form>
   );

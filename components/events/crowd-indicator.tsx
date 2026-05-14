@@ -10,12 +10,15 @@ type CrowdIndicatorProps = {
   status: CrowdStatus;
   className?: string;
   compact?: boolean;
+  /** When set, replaces the default crowd label (e.g. live momentum copy). */
+  labelOverride?: string;
 };
 
 export function CrowdIndicator({
   status,
   className,
   compact,
+  labelOverride,
 }: CrowdIndicatorProps) {
   const intensity = crowdBarIntensity(status);
   const heights = [0.35, 0.62, 0.88].map((h) => Math.min(1, h * intensity + 0.12));
@@ -33,7 +36,7 @@ export function CrowdIndicator({
         compact && "px-2 py-0.5",
         className
       )}
-      aria-label={`Crowd status: ${crowdLabel(status)}`}
+      aria-label={`Crowd status: ${labelOverride ?? crowdLabel(status)}`}
     >
       <motion.div
         className="flex h-4 items-end gap-0.5"
@@ -81,7 +84,7 @@ export function CrowdIndicator({
           crowdTone(status)
         )}
       >
-        {crowdLabel(status)}
+        {labelOverride ?? crowdLabel(status)}
       </span>
     </div>
   );

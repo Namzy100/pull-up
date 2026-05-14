@@ -18,6 +18,9 @@ export type Json =
 export type DbInterest = Extract<PuInterestId, EventCategory | "deals" | "live_music">;
 export type DbDealCategory = DealFilterId;
 
+export type EventCmsStatus = "pending" | "approved" | "rejected" | "live" | "ended";
+export type DealCmsStatus = EventCmsStatus;
+
 export type Database = {
   public: {
     Tables: {
@@ -137,8 +140,23 @@ export type Database = {
           image_url: string;
           external_url: string | null;
           created_by: string | null;
-          status: "pending" | "approved" | "rejected";
+          status: EventCmsStatus;
           created_at: string;
+          host_user_id: string | null;
+          category_label: string | null;
+          image_alt: string | null;
+          area: string | null;
+          venue_name: string | null;
+          host_label: string | null;
+          age_rule: string | null;
+          vibe: string | null;
+          urgency_labels: string[];
+          live_now: boolean;
+          saves_count: number;
+          rsvps_count: number;
+          watching_count: number;
+          pull_ups_last_hour: number;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -156,8 +174,23 @@ export type Database = {
           image_url: string;
           external_url?: string | null;
           created_by?: string | null;
-          status?: "pending" | "approved" | "rejected";
+          status?: EventCmsStatus;
           created_at?: string;
+          host_user_id?: string | null;
+          category_label?: string | null;
+          image_alt?: string | null;
+          area?: string | null;
+          venue_name?: string | null;
+          host_label?: string | null;
+          age_rule?: string | null;
+          vibe?: string | null;
+          urgency_labels?: string[];
+          live_now?: boolean;
+          saves_count?: number;
+          rsvps_count?: number;
+          watching_count?: number;
+          pull_ups_last_hour?: number;
+          updated_at?: string;
         };
         Update: {
           venue_id?: string;
@@ -173,7 +206,22 @@ export type Database = {
           description?: string;
           image_url?: string;
           external_url?: string | null;
-          status?: "pending" | "approved" | "rejected";
+          status?: EventCmsStatus;
+          host_user_id?: string | null;
+          category_label?: string | null;
+          image_alt?: string | null;
+          area?: string | null;
+          venue_name?: string | null;
+          host_label?: string | null;
+          age_rule?: string | null;
+          vibe?: string | null;
+          urgency_labels?: string[];
+          live_now?: boolean;
+          saves_count?: number;
+          rsvps_count?: number;
+          watching_count?: number;
+          pull_ups_last_hour?: number;
+          updated_at?: string;
         };
       };
       deals: {
@@ -190,8 +238,20 @@ export type Database = {
           external_url: string | null;
           student_only: boolean;
           created_by: string | null;
-          status: "pending" | "approved" | "rejected";
+          status: DealCmsStatus;
           created_at: string;
+          business_user_id: string | null;
+          business_name: string | null;
+          category: string | null;
+          category_label: string | null;
+          image_alt: string | null;
+          offer: string | null;
+          area: string | null;
+          urgency_label: string | null;
+          saves_count: number;
+          claims_count: number;
+          watching_count: number;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -206,8 +266,20 @@ export type Database = {
           external_url?: string | null;
           student_only?: boolean;
           created_by?: string | null;
-          status?: "pending" | "approved" | "rejected";
+          status?: DealCmsStatus;
           created_at?: string;
+          business_user_id?: string | null;
+          business_name?: string | null;
+          category?: string | null;
+          category_label?: string | null;
+          image_alt?: string | null;
+          offer?: string | null;
+          area?: string | null;
+          urgency_label?: string | null;
+          saves_count?: number;
+          claims_count?: number;
+          watching_count?: number;
+          updated_at?: string;
         };
         Update: {
           venue_id?: string;
@@ -220,7 +292,19 @@ export type Database = {
           image_url?: string;
           external_url?: string | null;
           student_only?: boolean;
-          status?: "pending" | "approved" | "rejected";
+          status?: DealCmsStatus;
+          business_user_id?: string | null;
+          business_name?: string | null;
+          category?: string | null;
+          category_label?: string | null;
+          image_alt?: string | null;
+          offer?: string | null;
+          area?: string | null;
+          urgency_label?: string | null;
+          saves_count?: number;
+          claims_count?: number;
+          watching_count?: number;
+          updated_at?: string;
         };
       };
       saved_events: {
@@ -254,6 +338,7 @@ export type Database = {
           reviewed_by: string | null;
           moderation_notes: string | null;
           created_at: string;
+          published_event_id: string | null;
         };
         Insert: {
           id?: string;
@@ -265,6 +350,7 @@ export type Database = {
           reviewed_by?: string | null;
           moderation_notes?: string | null;
           created_at?: string;
+          published_event_id?: string | null;
         };
         Update: {
           client_submission_id?: string | null;
@@ -272,6 +358,7 @@ export type Database = {
           reviewed_at?: string | null;
           reviewed_by?: string | null;
           moderation_notes?: string | null;
+          published_event_id?: string | null;
         };
       };
       business_submissions: {
@@ -285,6 +372,8 @@ export type Database = {
           reviewed_by: string | null;
           moderation_notes: string | null;
           created_at: string;
+          published_deal_id: string | null;
+          published_event_id: string | null;
         };
         Insert: {
           id?: string;
@@ -296,6 +385,8 @@ export type Database = {
           reviewed_by?: string | null;
           moderation_notes?: string | null;
           created_at?: string;
+          published_deal_id?: string | null;
+          published_event_id?: string | null;
         };
         Update: {
           client_submission_id?: string | null;
@@ -303,6 +394,8 @@ export type Database = {
           reviewed_at?: string | null;
           reviewed_by?: string | null;
           moderation_notes?: string | null;
+          published_deal_id?: string | null;
+          published_event_id?: string | null;
         };
       };
       access_requests: {
@@ -339,6 +432,47 @@ export type Database = {
           moderation_notes?: string | null;
         };
       };
+      engagement_events: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          subject_type: "event" | "deal" | "venue";
+          subject_id: string;
+          action:
+            | "view"
+            | "save"
+            | "unsave"
+            | "rsvp"
+            | "unrsvp"
+            | "share"
+            | "follow"
+            | "unfollow"
+            | "intent"
+            | "click";
+          meta: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          subject_type: "event" | "deal" | "venue";
+          subject_id: string;
+          action:
+            | "view"
+            | "save"
+            | "unsave"
+            | "rsvp"
+            | "unrsvp"
+            | "share"
+            | "follow"
+            | "unfollow"
+            | "intent"
+            | "click";
+          meta?: Json | null;
+          created_at?: string;
+        };
+        Update: never;
+      };
       consent_events: {
         Row: {
           id: string;
@@ -347,9 +481,18 @@ export type Database = {
             | "analytics"
             | "personalization"
             | "location"
-            | "marketing";
+            | "marketing"
+            | "host_posting_storage"
+            | "host_event_analytics"
+            | "host_verification_contact"
+            | "host_marketing"
+            | "business_verification_storage"
+            | "business_performance_analytics"
+            | "business_verification_contact"
+            | "business_promotional_outreach"
+            | "business_public_listing";
           value: boolean;
-          source: "onboarding" | "profile_settings";
+          source: "onboarding" | "profile_settings" | "signup";
           created_at: string;
         };
         Insert: {
@@ -359,9 +502,18 @@ export type Database = {
             | "analytics"
             | "personalization"
             | "location"
-            | "marketing";
+            | "marketing"
+            | "host_posting_storage"
+            | "host_event_analytics"
+            | "host_verification_contact"
+            | "host_marketing"
+            | "business_verification_storage"
+            | "business_performance_analytics"
+            | "business_verification_contact"
+            | "business_promotional_outreach"
+            | "business_public_listing";
           value: boolean;
-          source: "onboarding" | "profile_settings";
+          source: "onboarding" | "profile_settings" | "signup";
           created_at?: string;
         };
         Update: never;

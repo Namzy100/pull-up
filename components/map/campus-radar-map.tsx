@@ -15,15 +15,21 @@ import {
   MAP_FILTER_CHIPS,
   MAP_HOT_ZONES,
   MAP_ZONE_LABELS,
+  fallbackMapCoordsFromEntityId,
+  pinGlowBoostFromHeat,
+  zonePulseStrengths,
   type CampusMapFilter,
   dealMatchesMapFilter,
   eventMatchesMapFilter,
   getDealPinVariant,
   getEventPinVariant,
 } from "@/lib/campus-map";
+import { useCampusLiveSubscription } from "@/hooks/use-campus-live-subscription";
+import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { MOCK_DEALS } from "@/lib/deals-data";
 import { MOCK_EVENTS } from "@/lib/mock-data";
 import { crowdLabel, formatEventTimeRange } from "@/lib/event-utils";
+import type { PuDeal, PuEvent } from "@/lib/types";
 import { useAppStore } from "@/store/use-app-store";
 
 function showEventPin(filter: CampusMapFilter): boolean {
@@ -34,13 +40,13 @@ function showDealPin(filter: CampusMapFilter): boolean {
   return filter !== "events";
 }
 
-function eventVisible(event: (typeof MOCK_EVENTS)[0], filter: CampusMapFilter) {
+function eventVisible(event: PuEvent, filter: CampusMapFilter) {
   if (!showEventPin(filter)) return false;
   if (filter === "all" || filter === "events") return true;
   return eventMatchesMapFilter(event, filter);
 }
 
-function dealVisible(deal: (typeof MOCK_DEALS)[0], filter: CampusMapFilter) {
+function dealVisible(deal: PuDeal, filter: CampusMapFilter) {
   if (!showDealPin(filter)) return false;
   if (filter === "all" || filter === "deals") return true;
   return dealMatchesMapFilter(deal, filter);
@@ -59,10 +65,7 @@ const pinRing: Record<
   deal: "bg-gradient-to-br from-fuchsia-500 to-amber-400 shadow-[0_0_18px_rgba(217,70,239,0.65)]",
 };
 
-function crowdGlowClass(
-  status: (typeof MOCK_EVENTS)[0]["crowdStatus"],
-  live: boolean
-): string {
+function crowdGlowClass(status: PuEvent["crowdStatus"], live: boolean): string {
   if (live) return "opacity-90 scale-[1.35]";
   switch (status) {
     case "packed":
@@ -75,11 +78,28 @@ function crowdGlowClass(
   }
 }
 
-export function CampusRadarMap() {
+type CampusRadarMapProps = {
+  mapEvents?: PuEvent[];
+  mapDeals?: PuDeal[];
+};
+
+export function CampusRadarMap({
+  mapEvents = MOCK_EVENTS,
+  mapDeals = MOCK_DEALS,
+}: CampusRadarMapProps) {
   const [filter, setFilter] = useState<CampusMapFilter>("all");
   const [selected, setSelected] = useState<
     { kind: "event"; id: string } | { kind: "deal"; id: string } | null
   >(null);
+
+  const liveEnabled = hasSupabaseEnv();
+  const { events: liveEvents, deals: liveDeals } = useCampusLiveSubscription({
+    initialEvents: mapEvents,
+    initialDeals: mapDeals,
+    enabled: liveEnabled,
+  });
+  const srcEvents = liveEnabled ? liveEvents : mapEvents;
+  const srcDeals = liveEnabled ? liveDeals : mapDeals;
 
   const toggleSaveEvent = useAppStore((s) => s.toggleSaveEvent);
   const toggleSaveDeal = useAppStore((s) => s.toggleSaveDeal);
@@ -87,27 +107,29 @@ export function CampusRadarMap() {
   const savedDealIds = useAppStore((s) => s.savedDealIds);
 
   const eventsOnMap = useMemo(
-    () => MOCK_EVENTS.filter((e) => eventVisible(e, filter)),
-    [filter]
+    () => srcEvents.filter((e) => eventVisible(e, filter)),
+    [filter, srcEvents]
   );
   const dealsOnMap = useMemo(
-    () => MOCK_DEALS.filter((d) => dealVisible(d, filter)),
-    [filter]
+    () => srcDeals.filter((d) => dealVisible(d, filter)),
+    [filter, srcDeals]
   );
+
+  const zoneStrengths = useMemo(() => zonePulseStrengths(eventsOnMap), [eventsOnMap]);
 
   const selectedEvent = useMemo(
     () =>
       selected?.kind === "event"
-        ? MOCK_EVENTS.find((e) => e.id === selected.id)
+        ? srcEvents.find((e) => e.id === selected.id)
         : undefined,
-    [selected]
+    [selected, srcEvents]
   );
   const selectedDeal = useMemo(
     () =>
       selected?.kind === "deal"
-        ? MOCK_DEALS.find((d) => d.id === selected.id)
+        ? srcDeals.find((d) => d.id === selected.id)
         : undefined,
-    [selected]
+    [selected, srcDeals]
   );
 
   return (
@@ -205,18 +227,50 @@ export function CampusRadarMap() {
             />
           ))}
 
+          {MAP_ZONE_LABELS.map((z, i) => {
+            const s = zoneStrengths[i] ?? 0;
+            if (s < 1.15) return null;
+            const r = 8 + Math.min(20, s * 1.6);
+            return (
+              <motion.div
+                key={`live-zone-${z.id}`}
+                className="pointer-events-none absolute rounded-full border border-pu-magenta/28 bg-fuchsia-500/[0.07]"
+                style={{
+                  left: `${z.xPct}%`,
+                  top: `${z.yPct}%`,
+                  width: `${r}%`,
+                  height: `${r}%`,
+                  transform: "translate(-50%, -50%)",
+                }}
+                animate={{
+                  opacity: [0.18, 0.4, 0.18],
+                  scale: [0.96, 1.05, 0.96],
+                }}
+                transition={{
+                  duration: 2.9 + i * 0.12,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              />
+            );
+          })}
+
           {/* Event pins */}
           {eventsOnMap.map((event) => {
-            const pos = EVENT_MAP_POSITIONS[event.id];
-            if (!pos) return null;
+            const pos = EVENT_MAP_POSITIONS[event.id] ?? fallbackMapCoordsFromEntityId(event.id);
+            const boost = pinGlowBoostFromHeat(event);
             const v = getEventPinVariant(event);
             const active = selected?.kind === "event" && selected.id === event.id;
             return (
               <button
                 key={event.id}
                 type="button"
-                className="absolute z-20 -translate-x-1/2 -translate-y-1/2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400"
-                style={{ left: `${pos.xPct}%`, top: `${pos.yPct}%` }}
+                className="absolute z-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400"
+                style={{
+                  left: `${pos.xPct}%`,
+                  top: `${pos.yPct}%`,
+                  transform: `translate(-50%, -50%) scale(${boost})`,
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelected({ kind: "event", id: event.id });
@@ -252,8 +306,7 @@ export function CampusRadarMap() {
 
           {/* Deal pins (diamond-ish square) */}
           {dealsOnMap.map((deal) => {
-            const pos = DEAL_MAP_POSITIONS[deal.id];
-            if (!pos) return null;
+            const pos = DEAL_MAP_POSITIONS[deal.id] ?? fallbackMapCoordsFromEntityId(deal.id);
             const v = getDealPinVariant(deal);
             const ringClass = v === "food" ? pinRing.food : v === "bar" ? pinRing.bar : pinRing.deal;
             const active = selected?.kind === "deal" && selected.id === deal.id;

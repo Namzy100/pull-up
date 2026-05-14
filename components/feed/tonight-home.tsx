@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { motion } from "framer-motion";
 import { Bookmark, Eye, Flame, Radio, Search, X, Zap } from "lucide-react";
 
 import { LiveAmbient } from "@/components/feed/live-ambient";
+import { DealCard } from "@/components/deals/deal-card";
 import { EventCard } from "@/components/events/event-card";
-import type { PuEvent } from "@/lib/types";
+import { useCampusLiveSubscription } from "@/hooks/use-campus-live-subscription";
+import type { PuDeal, PuEvent } from "@/lib/types";
 import { formatCompactCount } from "@/lib/event-utils";
 import {
   filterEventsByInterests,
@@ -15,6 +17,9 @@ import {
   INTEREST_OPTIONS,
 } from "@/lib/recommendations";
 import { filterEventsBySearch } from "@/lib/event-search";
+import { buildLiveFeedBuckets } from "@/lib/trending-engine";
+import { hasSupabaseEnv } from "@/lib/supabase/env";
+import { getCampusPulseTotals, getHotEvents } from "@/lib/mock-data";
 import { useAppStore } from "@/store/use-app-store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,31 +40,85 @@ type CampusPulse = {
 };
 
 type TonightHomeProps = {
-  hotEvents: PuEvent[];
   feedEvents: PuEvent[];
   campusPulse: CampusPulse;
+  deals: PuDeal[];
 };
 
+const INTEREST_PROMPT_LS = "pu_has_seen_interest_prompt";
+
+function readInterestPromptSeen(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(INTEREST_PROMPT_LS) === "1";
+}
+
+function writeInterestPromptSeen() {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(INTEREST_PROMPT_LS, "1");
+}
+
 export function TonightHome({
-  hotEvents,
   feedEvents,
   campusPulse,
+  deals,
 }: TonightHomeProps) {
+  const profile = useAppStore((s) => s.mockProfile);
   const selectedInterests = useAppStore((s) => s.selectedInterests);
+  const followedVenueIds = useAppStore((s) => s.followedVenueIds);
+  const savedEventIds = useAppStore((s) => s.savedEventIds);
   const toggleInterest = useAppStore((s) => s.toggleInterest);
-  const [sheetDismissed, setSheetDismissed] = useState(
-    selectedInterests.length > 0
+  const liveEnabled = hasSupabaseEnv();
+  const { events: liveEvents, deals: liveDeals } = useCampusLiveSubscription({
+    initialEvents: feedEvents,
+    initialDeals: deals,
+    enabled: liveEnabled,
+  });
+
+  const pulseLive = useMemo(() => getCampusPulseTotals(liveEvents), [liveEvents]);
+  const pulse = liveEnabled ? pulseLive : campusPulse;
+
+  const userAreaHints = useMemo(() => {
+    const c = profile.campus || "";
+    return c
+      .split(/[^a-zA-Z0-9]+/)
+      .map((w) => w.trim())
+      .filter((w) => w.length > 2)
+      .slice(0, 10);
+  }, [profile.campus]);
+
+  const buckets = useMemo(
+    () =>
+      buildLiveFeedBuckets(liveEvents, liveDeals, {
+        userAreaHints,
+        followedVenueIds,
+        interests: selectedInterests,
+      }),
+    [liveDeals, liveEvents, followedVenueIds, selectedInterests, userAreaHints]
   );
-  const [sheetOpen, setSheetOpen] = useState(
-    !sheetDismissed && selectedInterests.length === 0
+
+  const hotLive = useMemo(() => getHotEvents(liveEvents, 5), [liveEvents]);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
   );
+  const [userDismissedInterest, setUserDismissedInterest] = useState(false);
+
+  const interestPromptDismissed =
+    userDismissedInterest || (mounted && readInterestPromptSeen());
+
+  const sheetOpen =
+    mounted &&
+    !profile.onboardingComplete &&
+    selectedInterests.length === 0 &&
+    !interestPromptDismissed;
 
   const [searchQuery, setSearchQuery] = useState("");
   const searchActive = searchQuery.trim().length > 0;
 
   const filteredBySearch = useMemo(
-    () => filterEventsBySearch(feedEvents, searchQuery),
-    [feedEvents, searchQuery]
+    () => filterEventsBySearch(liveEvents, searchQuery),
+    [liveEvents, searchQuery]
   );
 
   const filteredFeed = useMemo(
@@ -68,13 +127,24 @@ export function TonightHome({
   );
 
   const recommended = useMemo(
-    () => getRecommendedEvents(feedEvents, selectedInterests, 4),
-    [feedEvents, selectedInterests]
+    () =>
+      getRecommendedEvents(liveEvents, selectedInterests, 4, {
+        followedVenueIds,
+        savedEventIds,
+      }),
+    [liveEvents, selectedInterests, followedVenueIds, savedEventIds]
   );
 
   const openChanged = (open: boolean) => {
-    setSheetOpen(open);
-    if (!open) setSheetDismissed(true);
+    if (!open) {
+      writeInterestPromptSeen();
+      setUserDismissedInterest(true);
+    }
+  };
+
+  const dismissInterestSheet = () => {
+    writeInterestPromptSeen();
+    setUserDismissedInterest(true);
   };
 
   return (
@@ -138,7 +208,7 @@ export function TonightHome({
           >
             <span className="inline-flex items-center gap-1.5 rounded-xl border border-pu-border bg-pu-surface-deep/90 px-3 py-2 text-[11px] font-bold tabular-nums text-white/92 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
               <span className="size-1.5 shrink-0 rounded-full bg-pu-urgent shadow-[0_0_10px_oklch(0.64_0.22_28/0.75)]" />
-              {campusPulse.liveVenues} live scenes
+              {pulse.liveVenues} live scenes
             </span>
             <motion.span
               className="inline-flex items-center gap-1.5 rounded-xl border border-pu-magenta/30 bg-pu-magenta-dim/25 px-3 py-2 text-[11px] font-bold tabular-nums text-white"
@@ -162,11 +232,11 @@ export function TonightHome({
               >
                 <Zap className="size-3.5 text-pu-amber" aria-hidden />
               </motion.span>
-              {formatCompactCount(campusPulse.pullUpsLastHour)} pulls / hr
+              {formatCompactCount(pulse.pullUpsLastHour)} pulls / hr
             </motion.span>
             <span className="inline-flex items-center gap-1.5 rounded-xl border border-pu-border bg-pu-surface/80 px-3 py-2 text-[11px] font-bold tabular-nums text-white/85">
               <Eye className="size-3.5 shrink-0 text-pu-amber" aria-hidden />
-              {formatCompactCount(campusPulse.spottingLive)} watching live
+              {formatCompactCount(pulse.spottingLive)} watching live
             </span>
           </motion.div>
 
@@ -258,6 +328,44 @@ export function TonightHome({
           </section>
         ) : null}
 
+        {!searchActive && buckets.trendingTonight.length > 0 ? (
+          <section aria-labelledby="trending-tonight-heading" className="space-y-3">
+            <div>
+              <h2 id="trending-tonight-heading" className="pu-section-title-lg">
+                Trending tonight
+              </h2>
+              <p className="pu-meta mt-1">
+                Rankings shift as saves, RSVPs, and pull-up energy move in real time.
+              </p>
+            </div>
+            <div className="pu-strip-scroll gap-3">
+              {buckets.trendingTonight.map((event, index) => (
+                <div key={event.id} className="w-[min(82vw,300px)] shrink-0 snap-start">
+                  <EventCard event={event} layout="carousel" index={index} />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {!searchActive && buckets.risingNearYou.length > 0 ? (
+          <section aria-labelledby="rising-near-heading" className="space-y-3">
+            <div>
+              <h2 id="rising-near-heading" className="pu-section-title-lg">
+                Rising near you
+              </h2>
+              <p className="pu-meta mt-1">Velocity + your campus lanes — not just raw saves.</p>
+            </div>
+            <div className="pu-strip-scroll gap-3">
+              {buckets.risingNearYou.map((event, index) => (
+                <div key={event.id} className="w-[min(82vw,300px)] shrink-0 snap-start">
+                  <EventCard event={event} layout="carousel" index={index} />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <section aria-labelledby="recommended-heading" className="space-y-3">
           <div className="flex items-end justify-between gap-2">
             <div>
@@ -338,7 +446,7 @@ export function TonightHome({
                 <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-7 bg-gradient-to-r from-pu-surface-deep to-transparent sm:w-9" />
                 <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-7 bg-gradient-to-l from-pu-surface-deep to-transparent sm:w-9" />
                 <div className="-mx-1 flex gap-3 overflow-x-auto overscroll-x-contain px-1 pb-1.5 pt-0.5 [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory [&::-webkit-scrollbar]:hidden">
-                  {hotEvents.map((event, index) => (
+                  {hotLive.map((event, index) => (
                     <EventCard
                       key={event.id}
                       event={event}
@@ -352,6 +460,97 @@ export function TonightHome({
             </div>
           </div>
         </section>
+
+        {!searchActive && buckets.startingSoon.length > 0 ? (
+          <section aria-labelledby="starting-soon-heading" className="space-y-3">
+            <div>
+              <h2 id="starting-soon-heading" className="pu-section-title-lg">
+                Starting soon
+              </h2>
+              <p className="pu-meta mt-1">Doors and lines are about to flip — get ahead of the crowd.</p>
+            </div>
+            <div className="pu-strip-scroll gap-3">
+              {buckets.startingSoon.map((event, index) => (
+                <div key={event.id} className="w-[min(82vw,300px)] shrink-0 snap-start">
+                  <EventCard event={event} layout="carousel" index={index} />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {!searchActive && buckets.packedRightNow.length > 0 ? (
+          <section aria-labelledby="packed-heading" className="space-y-3">
+            <div>
+              <h2 id="packed-heading" className="pu-section-title-lg">
+                Packed right now
+              </h2>
+              <p className="pu-meta mt-1">Momentum labels from live engagement — not vibes alone.</p>
+            </div>
+            <div className="pu-strip-scroll gap-3">
+              {buckets.packedRightNow.map((event, index) => (
+                <div key={event.id} className="w-[min(82vw,300px)] shrink-0 snap-start">
+                  <EventCard event={event} layout="carousel" index={index} />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {!searchActive && buckets.dealsEndingSoon.length > 0 ? (
+          <section aria-labelledby="deals-ending-heading" className="space-y-3">
+            <div>
+              <h2 id="deals-ending-heading" className="pu-section-title-lg">
+                Deals ending soon
+              </h2>
+              <p className="pu-meta mt-1">Clock&apos;s running on tonight&apos;s steals.</p>
+            </div>
+            <div className="pu-strip-scroll gap-3">
+              {buckets.dealsEndingSoon.map((deal, index) => (
+                <div key={deal.id} className="w-[min(82vw,300px)] shrink-0 snap-start">
+                  <DealCard deal={deal} index={index} layout="feed" />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {!searchActive && buckets.mostSavedTonight.length > 0 ? (
+          <section aria-labelledby="most-saved-heading" className="space-y-3">
+            <div>
+              <h2 id="most-saved-heading" className="pu-section-title-lg">
+                Most saved tonight
+              </h2>
+              <p className="pu-meta mt-1">Campus is bookmarking these moves first.</p>
+            </div>
+            <div className="pu-strip-scroll gap-3">
+              {buckets.mostSavedTonight.map((event, index) => (
+                <div key={event.id} className="w-[min(82vw,300px)] shrink-0 snap-start">
+                  <EventCard event={event} layout="carousel" index={index} />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {!searchActive &&
+        (buckets.underrated.length > 0 || buckets.newAndHeating.length > 0) ? (
+          <section aria-labelledby="hidden-gems-heading" className="space-y-3">
+            <div>
+              <h2 id="hidden-gems-heading" className="pu-section-title-lg">
+                Underrated &amp; new heat
+              </h2>
+              <p className="pu-meta mt-1">Quiet saves with velocity, plus fresh drops catching traction.</p>
+            </div>
+            <div className="pu-strip-scroll gap-3">
+              {[...buckets.newAndHeating, ...buckets.underrated].map((event, index) => (
+                <div key={`${event.id}-${index}`} className="w-[min(82vw,300px)] shrink-0 snap-start">
+                  <EventCard event={event} layout="carousel" index={index} />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {!searchActive ? (
           <section aria-labelledby="feed-heading" className="space-y-3">
@@ -387,7 +586,11 @@ export function TonightHome({
         <SheetContent
           side="bottom"
           className="rounded-t-3xl border-t border-pu-border bg-pu-surface-deep p-0 pb-[env(safe-area-inset-bottom)] text-white"
-          showCloseButton={selectedInterests.length > 0}
+          showCloseButton={
+            selectedInterests.length > 0 ||
+            profile.onboardingComplete ||
+            interestPromptDismissed
+          }
         >
           <SheetHeader className="px-5 pt-5">
             <p className="pu-eyebrow mb-2 text-[0.625rem]">Tune your feed</p>
@@ -424,7 +627,7 @@ export function TonightHome({
             <Button
               type="button"
               className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-pu-magenta to-pu-amber font-black uppercase tracking-[0.1em] text-white shadow-[0_0_24px_-8px_oklch(0.7_0.29_328/0.45)] disabled:opacity-40"
-              onClick={() => setSheetOpen(false)}
+              onClick={dismissInterestSheet}
               disabled={selectedInterests.length === 0}
             >
               Save interests
@@ -433,7 +636,7 @@ export function TonightHome({
               type="button"
               variant="ghost"
               className="h-9 w-full text-white/60 hover:text-white"
-              onClick={() => setSheetOpen(false)}
+              onClick={dismissInterestSheet}
             >
               Skip for now
             </Button>

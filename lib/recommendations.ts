@@ -52,7 +52,14 @@ export function eventMatchesInterest(event: PuEvent, interest: PuInterestId): bo
   }
 }
 
-export function scoreEventForUser(event: PuEvent, interests: PuInterestId[]): RecommendedEvent {
+export function scoreEventForUser(
+  event: PuEvent,
+  interests: PuInterestId[],
+  opts?: {
+    followedVenueIds?: string[];
+    savedEventIds?: string[];
+  }
+): RecommendedEvent {
   let score = event.heatScore * 0.7;
   const reasons: string[] = [];
 
@@ -63,6 +70,24 @@ export function scoreEventForUser(event: PuEvent, interests: PuInterestId[]): Re
     score += 22 + matchedInterests.length * 8;
     const label = INTEREST_REASON.get(matchedInterests[0]);
     if (label) reasons.push(`Because you like ${label}`);
+  }
+
+  if (opts?.followedVenueIds?.includes(event.venueId)) {
+    score += 20;
+    reasons.push("Followed venue is heating up");
+  }
+
+  if (opts?.savedEventIds?.includes(event.id)) {
+    score += 6;
+    reasons.push("You already saved this");
+  }
+
+  if (event.savesCount >= 18 && matchedInterests.length > 0) {
+    reasons.push("Students like you saved this");
+  }
+
+  if (event.savesCount >= 30 && matchedInterests.length === 0) {
+    reasons.push("Popular among campus tonight");
   }
 
   score += Math.min(22, event.savesCount / 180);
@@ -98,10 +123,11 @@ export function scoreEventForUser(event: PuEvent, interests: PuInterestId[]): Re
 export function getRecommendedEvents(
   events: PuEvent[],
   interests: PuInterestId[],
-  limit = 4
+  limit = 4,
+  opts?: { followedVenueIds?: string[]; savedEventIds?: string[] }
 ): RecommendedEvent[] {
   return events
-    .map((event) => scoreEventForUser(event, interests))
+    .map((event) => scoreEventForUser(event, interests, opts))
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 }

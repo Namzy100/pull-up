@@ -7,6 +7,7 @@ import { Bookmark, Eye, TrendingUp, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PuEvent } from "@/lib/types";
 import { formatCompactCount } from "@/lib/event-utils";
+import { hasSupabaseEnv } from "@/lib/supabase/env";
 
 type SocialProofRowProps = {
   event: PuEvent;
@@ -20,8 +21,15 @@ export function SocialProofRow({
   className,
 }: SocialProofRowProps) {
   const [pullUps, setPullUps] = useState(event.pullUpsLastHour);
+  const simLive = !hasSupabaseEnv();
 
   useEffect(() => {
+    if (!simLive) {
+      const t = window.setTimeout(() => {
+        setPullUps(event.pullUpsLastHour);
+      }, 0);
+      return () => window.clearTimeout(t);
+    }
     const base = event.pullUpsLastHour;
     const id = window.setInterval(() => {
       setPullUps((n) => {
@@ -31,7 +39,7 @@ export function SocialProofRow({
       });
     }, 3200 + Math.random() * 900);
     return () => window.clearInterval(id);
-  }, [event.pullUpsLastHour, event.id]);
+  }, [event.pullUpsLastHour, event.id, simLive]);
 
   const fill =
     event.fillPressurePct !== undefined ? Math.min(100, event.fillPressurePct) : null;

@@ -1,4 +1,5 @@
 import type { DealFilterId, PuDeal, PuEvent } from "@/lib/types";
+import { engagementVelocity } from "@/lib/momentum";
 
 export type CampusMapFilter =
   | "all"
@@ -150,4 +151,35 @@ export function getDealPinVariant(deal: PuDeal): "food" | "bar" | "deal" {
   if (deal.filterTags.includes("food" as DealFilterId)) return "food";
   if (deal.filterTags.includes("bars" as DealFilterId)) return "bar";
   return "deal";
+}
+
+/** Deterministic pin when id is not in the mock layout table (e.g. Supabase UUID). */
+export function fallbackMapCoordsFromEntityId(id: string): MapPinCoords {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return {
+    xPct: 14 + (h % 72),
+    yPct: 22 + ((h >>> 8) % 56),
+  };
+}
+
+/** Per MAP_ZONE_LABELS index — higher = more live activity near that label. */
+export function zonePulseStrengths(events: PuEvent[], nowMs = Date.now()): number[] {
+  return MAP_ZONE_LABELS.map((z) => {
+    const key = z.label.toLowerCase();
+    const words = key.split(/\s+/).filter((w) => w.length > 2);
+    return events.reduce((acc, e) => {
+      const area = e.area.toLowerCase();
+      const hit = words.some((w) => area.includes(w));
+      if (!hit) return acc;
+      return acc + engagementVelocity(e, nowMs) * 0.055 + e.heatScore * 0.018;
+    }, 0);
+  });
+}
+
+export function pinGlowBoostFromHeat(event: PuEvent, nowMs = Date.now()): number {
+  return Math.min(1.48, 0.88 + engagementVelocity(event, nowMs) / 125);
 }

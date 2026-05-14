@@ -10,12 +10,14 @@ import { useAppStore } from "@/store/use-app-store";
 export function SessionSync() {
   const hydrateFromSupabase = useAppStore((s) => s.hydrateFromSupabase);
   const resetToMockDefaults = useAppStore((s) => s.resetToMockDefaults);
+  const clearSessionScopedState = useAppStore((s) => s.clearSessionScopedState);
 
   useEffect(() => {
     if (!hasSupabaseEnv()) return;
     let mounted = true;
     const supabase = createSupabaseBrowserClient();
     const runSync = async () => {
+      clearSessionScopedState();
       const data = await syncProfileStateFromSupabase();
       if (!mounted) return;
       if (!data) {
@@ -34,7 +36,7 @@ export function SessionSync() {
       mounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, [hydrateFromSupabase, resetToMockDefaults]);
+  }, [clearSessionScopedState, hydrateFromSupabase, resetToMockDefaults]);
 
   return null;
 }

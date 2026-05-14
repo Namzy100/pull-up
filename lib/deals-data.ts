@@ -32,6 +32,7 @@ export const MOCK_DEALS: PuDeal[] = [
     savesCount: 1520,
     claimsLastHour: 84,
     watchingCount: 2100,
+    validUntil: "2026-05-11",
   },
   {
     id: "deal-uiuc-002",

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { DEFAULT_BUSINESS_EVENT_IMAGE } from "@/lib/supabase/business-deal-payload";
 import type { Database } from "@/lib/supabase/database.types";
 import type {
   MockProfileSession,
@@ -35,7 +36,23 @@ export async function upsertProfile(
   client: DbClient,
   profile: Database["public"]["Tables"]["profiles"]["Insert"]
 ) {
-  return client.from("profiles").upsert(profile).select("*").single();
+  const row: Database["public"]["Tables"]["profiles"]["Insert"] = {
+    ...profile,
+    role: profile.role ?? "regular_user",
+    requested_role: profile.requested_role ?? "none",
+    verification_status: profile.verification_status ?? "none",
+    onboarding_complete: profile.onboarding_complete ?? false,
+    interests: profile.interests ?? [],
+    consent_analytics: profile.consent_analytics ?? false,
+    consent_personalization: profile.consent_personalization ?? false,
+    consent_location: profile.consent_location ?? false,
+    consent_marketing: profile.consent_marketing ?? false,
+  };
+  return client
+    .from("profiles")
+    .upsert(row, { onConflict: "id" })
+    .select("*")
+    .single();
 }
 
 export async function setProfileRole(
@@ -56,15 +73,16 @@ export async function updateProfileVerification(
     verificationNotes?: string | null;
   }
 ) {
-  return client
-    .from("profiles")
-    .update({
-      role: input.role,
-      requested_role: input.requestedRole,
-      verification_status: input.verificationStatus,
-      verification_notes: input.verificationNotes ?? null,
-    })
-    .eq("id", userId);
+  const patch: Database["public"]["Tables"]["profiles"]["Update"] = {};
+  if (input.role !== undefined) patch.role = input.role;
+  if (input.requestedRole !== undefined) patch.requested_role = input.requestedRole;
+  if (input.verificationStatus !== undefined) {
+    patch.verification_status = input.verificationStatus;
+  }
+  if (input.verificationNotes !== undefined) {
+    patch.verification_notes = input.verificationNotes;
+  }
+  return client.from("profiles").update(patch).eq("id", userId);
 }
 
 export async function listSavedEventIds(client: DbClient, userId: string) {
@@ -109,19 +127,45 @@ export async function listApprovedEvents(client: DbClient) {
   const { data, error } = await client
     .from("events")
     .select("*")
-    .eq("status", "approved")
+    .in("status", ["approved", "live"])
     .order("starts_at", { ascending: true });
   if (error) return [];
-  return data;
+  return data ?? [];
 }
 
 export async function listApprovedDeals(client: DbClient) {
   const { data, error } = await client
     .from("deals")
     .select("*")
-    .eq("status", "approved")
+    .in("status", ["approved", "live"])
     .order("valid_until", { ascending: true });
   if (error) return [];
+  return data ?? [];
+}
+
+export async function listHostSubmissionsByUser(client: DbClient, userId: string) {
+  const { data, error } = await client
+    .from("host_submissions")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) return [] as Database["public"]["Tables"]["host_submissions"]["Row"][];
+  return data ?? [];
+}
+
+export async function listBusinessSubmissionsByUser(client: DbClient, userId: string) {
+  const { data, error } = await client
+    .from("business_submissions")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) return [] as Database["public"]["Tables"]["business_submissions"]["Row"][];
+  return data ?? [];
+}
+
+export async function getEventById(client: DbClient, eventId: string) {
+  const { data, error } = await client.from("events").select("*").eq("id", eventId).maybeSingle();
+  if (error) return null;
   return data;
 }
 
@@ -159,6 +203,13 @@ export async function toggleVenueFollow(
     return client.from("venue_follows").upsert({ user_id: userId, venue_id: venueId });
   }
   return client.from("venue_follows").delete().eq("user_id", userId).eq("venue_id", venueId);
+}
+
+export async function insertEngagementEvent(
+  client: DbClient,
+  row: Database["public"]["Tables"]["engagement_events"]["Insert"]
+) {
+  return client.from("engagement_events").insert(row);
 }
 
 export async function replaceInterests(
@@ -289,6 +340,51 @@ export async function createBusinessSubmission(
   payload: Database["public"]["Tables"]["business_submissions"]["Insert"]["deal_payload"]
 ) {
   const item = payload as Record<string, string | number | boolean | null | undefined>;
+  const submissionKind = String(item.submissionKind ?? "deal").trim();
+
+  if (submissionKind === "event_promo") {
+    const requiredFields = [
+      "businessName",
+      "dealTitle",
+      "promoType",
+      "eventDate",
+      "startTime",
+      "endTime",
+      "area",
+      "description",
+    ] as const;
+    for (const key of requiredFields) {
+      if (!String(item[key] ?? "").trim()) {
+        return { error: { message: `Missing required field: ${key}` } };
+      }
+    }
+    const desc = String(item.description ?? "").trim();
+    if (desc.length < 12) {
+      return { error: { message: "Description is too short." } };
+    }
+    let imageUrl = String(item.imageUrl ?? "").trim();
+    if (!imageUrl) {
+      imageUrl = DEFAULT_BUSINESS_EVENT_IMAGE;
+    } else if (!isValidUrl(imageUrl)) {
+      return { error: { message: "Image URL must be a valid http(s) URL." } };
+    }
+    const externalUrl = String(item.externalUrl ?? "").trim();
+    if (externalUrl && !isValidUrl(externalUrl)) {
+      return { error: { message: "External URL must be a valid http(s) URL." } };
+    }
+    const normalized = {
+      ...item,
+      submissionKind: "event_promo",
+      imageUrl,
+      externalUrl: externalUrl || undefined,
+    };
+    return client.from("business_submissions").insert({
+      user_id: userId,
+      client_submission_id: clientSubmissionId,
+      deal_payload: normalized as Database["public"]["Tables"]["business_submissions"]["Insert"]["deal_payload"],
+    });
+  }
+
   const requiredFields = [
     "businessName",
     "dealTitle",
@@ -330,7 +426,7 @@ export async function moderateHostSubmission(
   status: ModerationStatus,
   moderationNotes?: string
 ) {
-  return client
+  return await client
     .from("host_submissions")
     .update({
       status,
@@ -348,7 +444,7 @@ export async function moderateBusinessSubmission(
   status: ModerationStatus,
   moderationNotes?: string
 ) {
-  return client
+  return await client
     .from("business_submissions")
     .update({
       status,
@@ -372,6 +468,32 @@ export async function createConsentEvent(
     value,
     source,
   });
+}
+
+export async function listProfilesForAdmin(client: DbClient, limit = 300) {
+  const { data, error } = await client
+    .from("profiles")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) return [] as DbProfile[];
+  return data ?? [];
+}
+
+/** Count submissions moderated since `sinceIso` (inclusive), with non-null reviewed_at. */
+export async function countSubmissionReviewsSince(
+  client: DbClient,
+  table: "host_submissions" | "business_submissions",
+  status: "approved" | "rejected",
+  sinceIso: string
+) {
+  const { count, error } = await client
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .eq("status", status)
+    .gte("reviewed_at", sinceIso);
+  if (error) return 0;
+  return count ?? 0;
 }
 
 export function profileRowToMockSession(profile: DbProfile): MockProfileSession {
