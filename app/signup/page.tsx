@@ -36,6 +36,31 @@ const CAMPUS_OPTIONS = [
   "Other",
 ] as const;
 
+const MIN_PASSWORD_LEN = 6;
+const MIN_USERNAME_LEN = 3;
+
+function emailLooksValid(raw: string): boolean {
+  const t = raw.trim();
+  if (!t) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
+}
+
+function logSignupBlockedConsoleSafe(payload: {
+  source: "submit" | "google";
+  path: SignupAccountPath | null;
+  codes: readonly string[];
+}) {
+  console.warn(
+    "[signup]",
+    JSON.stringify({
+      event: "signup_blocked",
+      source: payload.source,
+      path: payload.path,
+      codes: payload.codes,
+    })
+  );
+}
+
 function PathCard({
   active,
   title,
@@ -130,35 +155,86 @@ export default function SignupPage() {
   const [bPromo, setBPromo] = useState(false);
   const [bPublic, setBPublic] = useState(false);
 
-  const canSubmit = useMemo(() => {
-    if (!path) return false;
-    if (!email.trim() || password.length < 8) return false;
+  const blockingIssues = useMemo(() => {
+    const issues: { code: string; message: string }[] = [];
+    if (!path) {
+      issues.push({ code: "path", message: "Choose how you are joining (student, host, or business)." });
+      return issues;
+    }
+    const emailTrim = email.trim();
+    if (!emailTrim) {
+      issues.push({ code: "email_required", message: "Email is required." });
+    } else if (!emailLooksValid(emailTrim)) {
+      issues.push({ code: "email_invalid", message: "Enter a valid email address." });
+    }
+    if (password.length < MIN_PASSWORD_LEN) {
+      issues.push({
+        code: "password_min",
+        message: `Password must be at least ${MIN_PASSWORD_LEN} characters.`,
+      });
+    }
     if (path === "student") {
-      return (
-        displayName.trim().length > 0 &&
-        username.trim().length >= 3 &&
-        interests.length > 0
-      );
+      if (!displayName.trim()) {
+        issues.push({ code: "display_name", message: "Display name is required." });
+      }
+      const u = username.trim();
+      if (!u) {
+        issues.push({ code: "username_required", message: "Username is required." });
+      } else if (u.length < MIN_USERNAME_LEN) {
+        issues.push({
+          code: "username_min",
+          message: `Username must be at least ${MIN_USERNAME_LEN} characters.`,
+        });
+      }
+      if (!campus.trim()) {
+        issues.push({ code: "campus", message: "Campus is required." });
+      }
+      if (interests.length === 0) {
+        issues.push({ code: "interests", message: "Pick at least one interest." });
+      }
     }
     if (path === "host") {
-      return (
-        orgName.trim().length > 1 &&
-        hostContactName.trim().length > 1 &&
-        hostContactChannel.trim().length > 3
-      );
+      if (orgName.trim().length <= 1) {
+        issues.push({ code: "org_name", message: "Organization name is required (at least 2 characters)." });
+      }
+      if (hostContactName.trim().length <= 1) {
+        issues.push({ code: "host_contact_name", message: "Contact person is required." });
+      }
+      if (hostContactChannel.trim().length <= 3) {
+        issues.push({
+          code: "host_contact_channel",
+          message: "Contact email or phone must be at least 4 characters.",
+        });
+      }
     }
-    return (
-      bizName.trim().length > 1 &&
-      bizContactPerson.trim().length > 1 &&
-      bizContactChannel.trim().length > 3 &&
-      bizArea.trim().length > 2
-    );
+    if (path === "business") {
+      if (bizName.trim().length <= 1) {
+        issues.push({ code: "biz_name", message: "Business name is required (at least 2 characters)." });
+      }
+      if (bizContactPerson.trim().length <= 1) {
+        issues.push({ code: "biz_contact_person", message: "Contact person is required." });
+      }
+      if (bizContactChannel.trim().length <= 3) {
+        issues.push({
+          code: "biz_contact_channel",
+          message: "Business contact email or phone must be at least 4 characters.",
+        });
+      }
+      if (bizArea.trim().length <= 2) {
+        issues.push({
+          code: "biz_area",
+          message: "Business address or area is required (at least 3 characters).",
+        });
+      }
+    }
+    return issues;
   }, [
     path,
     email,
     password,
     displayName,
     username,
+    campus,
     interests.length,
     orgName,
     hostContactName,
@@ -168,6 +244,8 @@ export default function SignupPage() {
     bizContactChannel,
     bizArea,
   ]);
+
+  const canSubmit = blockingIssues.length === 0;
 
   function toggleInterest(id: PuInterestId) {
     setInterests((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -242,6 +320,15 @@ export default function SignupPage() {
     setBusy(true);
     setError(null);
     setMessage(null);
+    if (!canSubmit) {
+      logSignupBlockedConsoleSafe({
+        source: "submit",
+        path,
+        codes: blockingIssues.map((x) => x.code),
+      });
+      setBusy(false);
+      return;
+    }
     if (!envConfigured || !path) {
       setError(!envConfigured ? "Supabase env is not configured." : "Choose how you are joining.");
       setBusy(false);
@@ -290,6 +377,11 @@ export default function SignupPage() {
       return;
     }
     if (!canSubmit) {
+      logSignupBlockedConsoleSafe({
+        source: "google",
+        path,
+        codes: blockingIssues.map((x) => x.code),
+      });
       setError("Fill out the student form before continuing with Google.");
       setBusy(false);
       return;
@@ -379,7 +471,7 @@ export default function SignupPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-11 rounded-xl border-pu-border bg-black/45"
-                  minLength={8}
+                  minLength={MIN_PASSWORD_LEN}
                   required
                 />
               </div>
@@ -720,10 +812,27 @@ export default function SignupPage() {
               <p className="text-sm font-semibold text-pu-live">{message}</p>
             ) : null}
 
+            {!canSubmit && path ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-3"
+              >
+                <p className="text-[11px] font-black uppercase tracking-[0.12em] text-amber-200/90">
+                  Complete these to continue
+                </p>
+                <ul className="mt-2 list-inside list-disc space-y-1 text-sm font-medium text-white/80">
+                  {blockingIssues.map((item) => (
+                    <li key={item.code}>{item.message}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
             <Button
               type="submit"
               disabled={busy || !canSubmit}
-              className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-pu-magenta to-pu-amber font-black uppercase tracking-[0.08em]"
+              className="h-11 w-full rounded-xl border-0 bg-gradient-to-r from-pu-magenta to-pu-amber font-black uppercase tracking-[0.08em] disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale disabled:saturate-0 disabled:shadow-none"
             >
               {busy ? <Loader2 className="size-4 animate-spin" /> : "Create account"}
             </Button>
@@ -733,7 +842,7 @@ export default function SignupPage() {
                 variant="outline"
                 onClick={signUpGoogle}
                 disabled={busy || !canSubmit}
-                className="h-11 w-full rounded-xl border-pu-border bg-black/35 font-bold text-white"
+                className="h-11 w-full rounded-xl border-pu-border bg-black/35 font-bold text-white disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-zinc-900/80 disabled:text-white/35"
               >
                 <Sparkles className="mr-2 size-4 text-pu-amber" />
                 Continue with Google
