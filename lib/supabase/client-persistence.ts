@@ -32,6 +32,7 @@ import {
   updateProfileVerification,
   upsertProfile,
 } from "@/lib/supabase/repositories";
+import { logAuthHydration } from "@/lib/auth-hydration";
 import { normalizeStoredProfileAvatarUrl } from "@/lib/profile-image-url";
 import type { MockProfileSession, PuInterestId } from "@/lib/types";
 
@@ -43,18 +44,33 @@ async function getAuthedUserId() {
   return user?.id ?? null;
 }
 
-export async function syncProfileStateFromSupabase() {
+export async function syncProfileStateFromSupabase(options?: { log?: boolean }) {
+  const shouldLog = options?.log !== false;
+  const log = (event: string, detail?: Record<string, string | number | boolean | null>) => {
+    if (shouldLog) logAuthHydration(event, detail);
+  };
+
   const supabase = createSupabaseBrowserClient();
+  log("profile_fetch_auth_start");
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
+  if (authError) {
+    log("profile_fetch_auth_error", { code: authError.code ?? null });
+    throw authError;
+  }
+  log("profile_fetch_auth_end", { hasUser: Boolean(user) });
   if (!user) return null;
   const userId = user.id;
+  log("profile_fetch_row_start", { userId });
   const profile = await getProfileById(supabase, userId);
+  log("profile_fetch_row_end", { hasProfile: Boolean(profile) });
   const savedEventIds = await listSavedEventIds(supabase, userId);
   const rsvpedEventIds = await listRsvpEventIds(supabase, userId);
   const followedVenueIds = await listFollowedVenueIds(supabase, userId);
   const interests = await listInterests(supabase, userId);
+  log("profile_fetch_engagement_end");
   const fallbackProfile: MockProfileSession = {
     username: user.email?.split("@")[0] ?? "new_user",
     fullName: "",

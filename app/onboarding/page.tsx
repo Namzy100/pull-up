@@ -4,10 +4,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { SessionHydrationRecovery } from "@/components/auth/session-hydration-recovery";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  hydrationErrorMessage,
+  logAuthHydration,
+  logPwaDisplayContext,
+  SESSION_HYDRATION_TIMEOUT_MS,
+  withTimeout,
+} from "@/lib/auth-hydration";
 import { INTEREST_OPTIONS } from "@/lib/recommendations";
 import {
   persistConsentEvent,
@@ -29,6 +37,7 @@ const CAMPUS_OPTIONS: readonly string[] = [
 export default function OnboardingPage() {
   const router = useRouter();
   const hydrateFromSupabase = useAppStore((s) => s.hydrateFromSupabase);
+  const logout = useAppStore((s) => s.logout);
   const envConfigured = hasSupabaseEnv();
   const [username, setUsername] = useState("");
   const [fullName, setFullName] = useState("");
@@ -41,36 +50,42 @@ export default function OnboardingPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bootLoading, setBootLoading] = useState(true);
+  const [bootFailed, setBootFailed] = useState(false);
+  const [bootError, setBootError] = useState<string | null>(null);
+  const [bootRetryBusy, setBootRetryBusy] = useState(false);
 
   const loadProfile = useCallback(async () => {
     if (!envConfigured) {
-      return;
+      return "no_env" as const;
     }
+    logAuthHydration("onboarding_profile_fetch_start");
     const supabase = createSupabaseBrowserClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
+    logAuthHydration("onboarding_profile_fetch_auth_end", { hasUser: Boolean(user) });
     if (!user) {
       router.replace("/login?next=/onboarding");
-      return;
+      return "redirect" as const;
     }
     const row = await getProfileById(supabase, user.id);
+    logAuthHydration("onboarding_profile_fetch_row_end", { hasProfile: Boolean(row) });
     if (!row) {
       router.replace("/signup");
-      return;
+      return "redirect" as const;
     }
     if (row.role !== "regular_user") {
       router.replace("/profile");
-      return;
+      return "redirect" as const;
     }
     if (row.requested_role === "host" || row.requested_role === "business") {
       if (row.verification_status === "pending") {
         router.replace("/onboarding/pending");
-        return;
+        return "redirect" as const;
       }
       if (row.verification_status === "rejected") {
         router.replace("/onboarding/rejected");
-        return;
+        return "redirect" as const;
       }
     }
     setUsername(row.username);
@@ -83,26 +98,90 @@ export default function OnboardingPage() {
     setConsentMarketing(row.consent_marketing);
     if (row.onboarding_complete) {
       router.replace("/");
-      return;
+      return "redirect" as const;
     }
+    logAuthHydration("onboarding_profile_fetch_ready");
     return "ready" as const;
   }, [envConfigured, router]);
 
+  const runBoot = useCallback(async (isRetry = false) => {
+    setBootFailed(false);
+    setBootError(null);
+    if (isRetry) {
+      setBootRetryBusy(true);
+      setBootLoading(true);
+    }
+    logAuthHydration("onboarding_boot_start", { isRetry });
+    try {
+      const outcome = await withTimeout(
+        loadProfile(),
+        SESSION_HYDRATION_TIMEOUT_MS,
+        "onboarding-loadProfile"
+      );
+      if (outcome === "ready" || outcome === "no_env") {
+        setBootLoading(false);
+      }
+      logAuthHydration("onboarding_boot_complete", {
+        outcome: outcome ?? "undefined",
+        isRetry,
+      });
+    } catch (err: unknown) {
+      const message = hydrationErrorMessage(err);
+      console.warn("[auth-hydration]", {
+        event: "onboarding_boot_failed",
+        message: err instanceof Error ? err.message : String(err),
+      });
+      setBootFailed(true);
+      setBootError(message);
+      setBootLoading(false);
+    } finally {
+      setBootRetryBusy(false);
+    }
+  }, [loadProfile]);
+
   useEffect(() => {
+    logPwaDisplayContext();
     let cancelled = false;
     void (async () => {
-      if (!envConfigured) {
-        if (!cancelled) setBootLoading(false);
-        return;
+      logAuthHydration("onboarding_boot_start", { isRetry: false });
+      try {
+        const outcome = await withTimeout(
+          loadProfile(),
+          SESSION_HYDRATION_TIMEOUT_MS,
+          "onboarding-loadProfile"
+        );
+        if (cancelled) return;
+        if (outcome === "ready" || outcome === "no_env") {
+          setBootLoading(false);
+        }
+        logAuthHydration("onboarding_boot_complete", {
+          outcome: outcome ?? "undefined",
+          isRetry: false,
+        });
+      } catch (err: unknown) {
+        if (cancelled) return;
+        const message = hydrationErrorMessage(err);
+        console.warn("[auth-hydration]", {
+          event: "onboarding_boot_failed",
+          message: err instanceof Error ? err.message : String(err),
+        });
+        setBootFailed(true);
+        setBootError(message);
+        setBootLoading(false);
       }
-      const outcome = await loadProfile();
-      if (cancelled) return;
-      if (outcome === "ready") setBootLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [envConfigured, loadProfile]);
+  }, [loadProfile]);
+
+  async function handleBootLogout() {
+    setBootRetryBusy(true);
+    await logout();
+    setBootRetryBusy(false);
+    router.replace("/login?next=/onboarding");
+    router.refresh();
+  }
 
   const canSubmit = useMemo(
     () => username.trim().length >= 3 && interests.length > 0,
@@ -189,10 +268,27 @@ export default function OnboardingPage() {
     router.refresh();
   }
 
-  if (bootLoading) {
+  if (bootLoading && !bootFailed) {
     return (
       <div className="pu-screen flex min-h-dvh items-center justify-center px-4">
         <p className="pu-meta">Loading your profile…</p>
+      </div>
+    );
+  }
+
+  if (bootFailed) {
+    return (
+      <div className="pu-screen flex min-h-dvh flex-col items-center justify-center gap-6 px-4">
+        <SessionHydrationRecovery
+          title="Couldn’t restore your session"
+          message={
+            bootError ??
+            "Profile loading timed out. Retry, or sign out to start fresh."
+          }
+          busy={bootRetryBusy}
+          onRetry={() => void runBoot(true)}
+          onLogout={() => void handleBootLogout()}
+        />
       </div>
     );
   }
