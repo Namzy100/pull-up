@@ -30,6 +30,10 @@ export function BottomNav() {
     return <AdminBottomNav />;
   }
 
+  if (pathname.startsWith("/onboarding")) {
+    return null;
+  }
+
   const meHref = showAuthGate
     ? "/login?next=%2Fprofile"
     : role === "admin"

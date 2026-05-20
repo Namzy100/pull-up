@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,10 @@ type SessionHydrationRecoveryProps = {
   busy?: boolean;
   onRetry: () => void;
   onLogout: () => void;
+  /** When set, shows a “Go to login” action (link or button). */
+  goToLoginHref?: string;
+  onGoToLogin?: () => void;
+  goToLoginLabel?: string;
 };
 
 export function SessionHydrationRecovery({
@@ -18,13 +23,18 @@ export function SessionHydrationRecovery({
   busy = false,
   onRetry,
   onLogout,
+  goToLoginHref,
+  onGoToLogin,
+  goToLoginLabel = "Go to login",
 }: SessionHydrationRecoveryProps) {
+  const showLogin = Boolean(goToLoginHref || onGoToLogin);
+
   return (
     <div
       role="alertdialog"
       aria-labelledby="session-recovery-title"
       aria-describedby="session-recovery-desc"
-      className="fixed inset-x-4 top-[max(1.25rem,env(safe-area-inset-top))] z-[100] mx-auto max-w-sm rounded-2xl border border-amber-500/35 bg-zinc-950/95 p-5 shadow-[0_12px_48px_-12px_rgba(0,0,0,0.85)] backdrop-blur-xl"
+      className="w-full max-w-sm rounded-2xl border border-amber-500/35 bg-zinc-950/95 p-5 shadow-[0_12px_48px_-12px_rgba(0,0,0,0.85)] backdrop-blur-xl"
     >
       <p
         id="session-recovery-title"
@@ -45,6 +55,31 @@ export function SessionHydrationRecovery({
         >
           {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : "Retry"}
         </Button>
+        {showLogin ? (
+          goToLoginHref ? (
+            <Button
+              asChild
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              className="rounded-lg border-white/15 font-bold text-white/90"
+            >
+              <Link href={goToLoginHref}>{goToLoginLabel}</Link>
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              className="rounded-lg border-white/15 font-bold text-white/90"
+              onClick={onGoToLogin}
+            >
+              {goToLoginLabel}
+            </Button>
+          )
+        ) : null}
         <Button
           type="button"
           size="sm"

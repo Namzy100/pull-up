@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SessionHydrationRecovery } from "@/components/auth/session-hydration-recovery";
 import { Button } from "@/components/ui/button";
@@ -34,11 +34,28 @@ const CAMPUS_OPTIONS: readonly string[] = [
   "Other",
 ];
 
+const LOGIN_NEXT = "/login?next=%2Fonboarding";
+
+type OnboardingBootOutcome =
+  | { status: "no_env" }
+  | { status: "no_user" }
+  | { status: "ready" }
+  | { status: "redirect"; href: string; label: string };
+
+function ensureClientAuthReady() {
+  const { authReady, hydrateLoggedOut } = useAppStore.getState();
+  if (!authReady) {
+    hydrateLoggedOut();
+    logAuthHydration("onboarding_auth_ready_set", { reason: "boot_finally" });
+  }
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const hydrateFromSupabase = useAppStore((s) => s.hydrateFromSupabase);
   const logout = useAppStore((s) => s.logout);
   const envConfigured = hasSupabaseEnv();
+
   const [username, setUsername] = useState("");
   const [fullName, setFullName] = useState("");
   const [campus, setCampus] = useState(CAMPUS_OPTIONS[0]);
@@ -49,137 +66,188 @@ export default function OnboardingPage() {
   const [consentMarketing, setConsentMarketing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const [bootLoading, setBootLoading] = useState(true);
   const [bootFailed, setBootFailed] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
   const [bootRetryBusy, setBootRetryBusy] = useState(false);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
+  const [bootRedirect, setBootRedirect] = useState<{ href: string; label: string } | null>(null);
 
-  const loadProfile = useCallback(async () => {
+  const bootStartedRef = useRef(false);
+
+  const applyProfileRow = useCallback(
+    (row: NonNullable<Awaited<ReturnType<typeof getProfileById>>>) => {
+      setUsername(row.username);
+      setFullName(row.full_name ?? "");
+      setCampus(row.campus ?? CAMPUS_OPTIONS[0]);
+      setInterests((row.interests ?? []) as PuInterestId[]);
+      setConsentAnalytics(row.consent_analytics);
+      setConsentPersonalization(row.consent_personalization);
+      setConsentLocation(row.consent_location);
+      setConsentMarketing(row.consent_marketing);
+    },
+    []
+  );
+
+  const loadProfile = useCallback(async (): Promise<OnboardingBootOutcome> => {
     if (!envConfigured) {
-      return "no_env" as const;
+      return { status: "no_env" };
     }
+
     logAuthHydration("onboarding_profile_fetch_start");
     const supabase = createSupabaseBrowserClient();
+
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser();
-    logAuthHydration("onboarding_profile_fetch_auth_end", { hasUser: Boolean(user) });
-    if (!user) {
-      router.replace("/login?next=/onboarding");
-      return "redirect" as const;
+
+    if (authError) {
+      logAuthHydration("onboarding_profile_fetch_auth_error", {
+        code: authError.code ?? null,
+      });
+      throw authError;
     }
+
+    logAuthHydration("onboarding_profile_fetch_auth_end", { hasUser: Boolean(user) });
+
+    if (!user) {
+      return { status: "no_user" };
+    }
+
     const row = await getProfileById(supabase, user.id);
     logAuthHydration("onboarding_profile_fetch_row_end", { hasProfile: Boolean(row) });
+
     if (!row) {
-      router.replace("/signup");
-      return "redirect" as const;
+      return { status: "redirect", href: "/signup", label: "Continue to signup" };
     }
+
     if (row.role !== "regular_user") {
-      router.replace("/profile");
-      return "redirect" as const;
+      return { status: "redirect", href: "/profile", label: "Open profile" };
     }
+
     if (row.requested_role === "host" || row.requested_role === "business") {
       if (row.verification_status === "pending") {
-        router.replace("/onboarding/pending");
-        return "redirect" as const;
+        return {
+          status: "redirect",
+          href: "/onboarding/pending",
+          label: "View pending verification",
+        };
       }
       if (row.verification_status === "rejected") {
-        router.replace("/onboarding/rejected");
-        return "redirect" as const;
+        return {
+          status: "redirect",
+          href: "/onboarding/rejected",
+          label: "View verification status",
+        };
       }
     }
-    setUsername(row.username);
-    setFullName(row.full_name ?? "");
-    setCampus(row.campus ?? CAMPUS_OPTIONS[0]);
-    setInterests((row.interests ?? []) as PuInterestId[]);
-    setConsentAnalytics(row.consent_analytics);
-    setConsentPersonalization(row.consent_personalization);
-    setConsentLocation(row.consent_location);
-    setConsentMarketing(row.consent_marketing);
-    if (row.onboarding_complete) {
-      router.replace("/");
-      return "redirect" as const;
-    }
-    logAuthHydration("onboarding_profile_fetch_ready");
-    return "ready" as const;
-  }, [envConfigured, router]);
 
-  const runBoot = useCallback(async (isRetry = false) => {
-    setBootFailed(false);
-    setBootError(null);
-    if (isRetry) {
+    if (row.onboarding_complete) {
+      return { status: "redirect", href: "/", label: "Go to Tonight" };
+    }
+
+    applyProfileRow(row);
+    logAuthHydration("onboarding_profile_fetch_ready");
+    return { status: "ready" };
+  }, [applyProfileRow, envConfigured]);
+
+  const runBoot = useCallback(
+    async (trigger: "mount" | "retry") => {
+      setBootFailed(false);
+      setBootError(null);
+      setNeedsSignIn(false);
+      setBootRedirect(null);
       setBootRetryBusy(true);
       setBootLoading(true);
-    }
-    logAuthHydration("onboarding_boot_start", { isRetry });
-    try {
-      const outcome = await withTimeout(
-        loadProfile(),
-        SESSION_HYDRATION_TIMEOUT_MS,
-        "onboarding-loadProfile"
-      );
-      if (outcome === "ready" || outcome === "no_env") {
-        setBootLoading(false);
-      }
-      logAuthHydration("onboarding_boot_complete", {
-        outcome: outcome ?? "undefined",
-        isRetry,
-      });
-    } catch (err: unknown) {
-      const message = hydrationErrorMessage(err);
-      console.warn("[auth-hydration]", {
-        event: "onboarding_boot_failed",
-        message: err instanceof Error ? err.message : String(err),
-      });
-      setBootFailed(true);
-      setBootError(message);
-      setBootLoading(false);
-    } finally {
-      setBootRetryBusy(false);
-    }
-  }, [loadProfile]);
 
-  useEffect(() => {
-    logPwaDisplayContext();
-    let cancelled = false;
-    void (async () => {
-      logAuthHydration("onboarding_boot_start", { isRetry: false });
+      logAuthHydration("onboarding_boot_start", { trigger });
+
       try {
         const outcome = await withTimeout(
           loadProfile(),
           SESSION_HYDRATION_TIMEOUT_MS,
           "onboarding-loadProfile"
         );
-        if (cancelled) return;
-        if (outcome === "ready" || outcome === "no_env") {
-          setBootLoading(false);
-        }
+
         logAuthHydration("onboarding_boot_complete", {
-          outcome: outcome ?? "undefined",
-          isRetry: false,
+          trigger,
+          status: outcome.status,
         });
+
+        switch (outcome.status) {
+          case "no_env":
+            break;
+          case "no_user":
+            setNeedsSignIn(true);
+            break;
+          case "ready":
+            break;
+          case "redirect":
+            setBootRedirect({ href: outcome.href, label: outcome.label });
+            router.replace(outcome.href);
+            break;
+        }
       } catch (err: unknown) {
-        if (cancelled) return;
         const message = hydrationErrorMessage(err);
         console.warn("[auth-hydration]", {
           event: "onboarding_boot_failed",
+          trigger,
           message: err instanceof Error ? err.message : String(err),
         });
         setBootFailed(true);
         setBootError(message);
+      } finally {
         setBootLoading(false);
+        setBootRetryBusy(false);
+        ensureClientAuthReady();
+        logAuthHydration("onboarding_boot_finally", { trigger });
       }
-    })();
+    },
+    [loadProfile, router]
+  );
+
+  useEffect(() => {
+    logPwaDisplayContext();
+    if (bootStartedRef.current) return;
+    bootStartedRef.current = true;
+
+    const timer = window.setTimeout(() => {
+      void runBoot("mount");
+    }, 0);
+
+    const hardStop = window.setTimeout(() => {
+      setBootLoading((loading) => {
+        if (!loading) return false;
+        console.warn("[auth-hydration]", {
+          event: "onboarding_boot_hard_stop",
+          ms: SESSION_HYDRATION_TIMEOUT_MS + 500,
+        });
+        window.queueMicrotask(() => {
+          setBootFailed(true);
+          setBootError(
+            "Profile loading took too long. Retry, sign in again, or log out to reset."
+          );
+          ensureClientAuthReady();
+        });
+        return false;
+      });
+    }, SESSION_HYDRATION_TIMEOUT_MS + 500);
+
     return () => {
-      cancelled = true;
+      window.clearTimeout(timer);
+      window.clearTimeout(hardStop);
     };
-  }, [loadProfile]);
+  }, [runBoot]);
 
   async function handleBootLogout() {
     setBootRetryBusy(true);
     await logout();
     setBootRetryBusy(false);
-    router.replace("/login?next=/onboarding");
+    setBootFailed(false);
+    setNeedsSignIn(false);
+    router.replace(LOGIN_NEXT);
     router.refresh();
   }
 
@@ -203,98 +271,136 @@ export default function OnboardingPage() {
       setBusy(false);
       return;
     }
-    const supabase = createSupabaseBrowserClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      setError("Session expired. Please sign in again.");
-      setBusy(false);
-      router.replace("/login?next=/onboarding");
-      return;
-    }
-    const { data: profileRow, error: profileError } = await upsertProfile(supabase, {
-      id: user.id,
-      username: username.trim().toLowerCase(),
-      full_name: fullName.trim() || null,
-      campus,
-      role: "regular_user",
-      requested_role: "none",
-      verification_status: "none",
-      onboarding_complete: true,
-      interests,
-      consent_analytics: consentAnalytics,
-      consent_personalization: consentPersonalization,
-      consent_location: consentLocation,
-      consent_marketing: consentMarketing,
-    });
-    if (profileError) {
-      const detail = formatSupabasePostgrestError(profileError);
-      const email = user.email ?? null;
-      const safeEmail = email
-        ? `${email.slice(0, 2)}***@${email.split("@")[1] ?? "hidden"}`
-        : null;
-      console.error("[onboarding] upsertProfile failed", {
-        authUserId: user.id,
-        email: safeEmail,
-        targetProfileId: user.id,
-        error: detail,
-        code: profileError.code,
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const {
+        data: { user },
+      } = await withTimeout(supabase.auth.getUser(), SESSION_HYDRATION_TIMEOUT_MS, "onboarding-submit-getUser");
+      if (!user) {
+        setError("Session expired. Please sign in again.");
+        setBusy(false);
+        router.replace(LOGIN_NEXT);
+        return;
+      }
+      const { data: profileRow, error: profileError } = await upsertProfile(supabase, {
+        id: user.id,
+        username: username.trim().toLowerCase(),
+        full_name: fullName.trim() || null,
+        campus,
+        role: "regular_user",
+        requested_role: "none",
+        verification_status: "none",
+        onboarding_complete: true,
+        interests,
+        consent_analytics: consentAnalytics,
+        consent_personalization: consentPersonalization,
+        consent_location: consentLocation,
+        consent_marketing: consentMarketing,
       });
-      setError(detail);
+      if (profileError) {
+        const detail = formatSupabasePostgrestError(profileError);
+        const email = user.email ?? null;
+        const safeEmail = email
+          ? `${email.slice(0, 2)}***@${email.split("@")[1] ?? "hidden"}`
+          : null;
+        console.error("[onboarding] upsertProfile failed", {
+          authUserId: user.id,
+          email: safeEmail,
+          targetProfileId: user.id,
+          error: detail,
+          code: profileError.code,
+        });
+        setError(detail);
+        setBusy(false);
+        return;
+      }
+      if (!profileRow) {
+        setError("Profile save returned no row.");
+        setBusy(false);
+        return;
+      }
+      const interestsResult = await replaceInterests(supabase, user.id, interests);
+      if (interestsResult.error) {
+        setError(interestsResult.error.message);
+        setBusy(false);
+        return;
+      }
+      await Promise.all([
+        persistConsentEvent("analytics", consentAnalytics, "onboarding"),
+        persistConsentEvent("personalization", consentPersonalization, "onboarding"),
+        persistConsentEvent("location", consentLocation, "onboarding"),
+        persistConsentEvent("marketing", consentMarketing, "onboarding"),
+      ]);
+      const synced = await withTimeout(
+        syncProfileStateFromSupabase({ log: true }),
+        SESSION_HYDRATION_TIMEOUT_MS,
+        "onboarding-post-save-sync"
+      );
+      if (synced) hydrateFromSupabase(synced);
+      router.replace("/");
+      router.refresh();
+    } catch (err: unknown) {
+      setError(hydrationErrorMessage(err));
       setBusy(false);
-      return;
     }
-    if (!profileRow) {
-      setError("Profile save returned no row.");
-      setBusy(false);
-      return;
-    }
-    const interestsResult = await replaceInterests(supabase, user.id, interests);
-    if (interestsResult.error) {
-      setError(interestsResult.error.message);
-      setBusy(false);
-      return;
-    }
-    await Promise.all([
-      persistConsentEvent("analytics", consentAnalytics, "onboarding"),
-      persistConsentEvent("personalization", consentPersonalization, "onboarding"),
-      persistConsentEvent("location", consentLocation, "onboarding"),
-      persistConsentEvent("marketing", consentMarketing, "onboarding"),
-    ]);
-    const synced = await syncProfileStateFromSupabase();
-    if (synced) hydrateFromSupabase(synced);
-    router.replace("/");
-    router.refresh();
   }
 
   if (bootLoading && !bootFailed) {
     return (
-      <div className="pu-screen flex min-h-dvh items-center justify-center px-4">
+      <div className="pu-screen flex min-h-dvh items-center justify-center px-4 pb-8">
         <p className="pu-meta">Loading your profile…</p>
+      </div>
+    );
+  }
+
+  if (needsSignIn) {
+    return (
+      <div className="pu-screen flex min-h-dvh flex-col items-center justify-center gap-6 px-4 pb-8">
+        <div className="w-full max-w-sm space-y-3 text-center">
+          <h1 className="font-heading text-lg font-bold text-white">Please sign in to continue</h1>
+          <p className="pu-meta text-[0.8125rem] leading-relaxed">
+            Student onboarding needs an active session. Sign in, then we&apos;ll pick up where you
+            left off.
+          </p>
+          <Button asChild className="h-11 w-full rounded-xl font-bold">
+            <Link href={LOGIN_NEXT}>Go to login</Link>
+          </Button>
+        </div>
       </div>
     );
   }
 
   if (bootFailed) {
     return (
-      <div className="pu-screen flex min-h-dvh flex-col items-center justify-center gap-6 px-4">
+      <div className="pu-screen flex min-h-dvh flex-col items-center justify-center px-4 pb-8">
         <SessionHydrationRecovery
-          title="Couldn’t restore your session"
+          title="Couldn’t load your profile"
           message={
             bootError ??
-            "Profile loading timed out. Retry, or sign out to start fresh."
+            "Profile loading timed out. Retry, sign in again, or log out to reset."
           }
           busy={bootRetryBusy}
-          onRetry={() => void runBoot(true)}
+          onRetry={() => void runBoot("retry")}
+          goToLoginHref={LOGIN_NEXT}
           onLogout={() => void handleBootLogout()}
         />
       </div>
     );
   }
 
+  if (bootRedirect) {
+    return (
+      <div className="pu-screen flex min-h-dvh flex-col items-center justify-center gap-4 px-4 pb-8 text-center">
+        <p className="pu-meta">Taking you to the next step…</p>
+        <Button asChild variant="outline" className="rounded-xl border-pu-border font-bold">
+          <Link href={bootRedirect.href}>{bootRedirect.label}</Link>
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="pu-screen min-h-dvh px-4 py-10">
+    <div className="pu-screen min-h-dvh px-4 py-10 pb-8">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[55vh] bg-[radial-gradient(ellipse_80%_55%_at_50%_-12%,oklch(0.55_0.22_328/0.24),transparent_62%)]" />
       <form
         onSubmit={completeOnboarding}
