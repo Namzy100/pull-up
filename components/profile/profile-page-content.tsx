@@ -25,6 +25,8 @@ import {
   HostSectionLabel,
   HostSurface,
 } from "@/components/role-surfaces/role-surfaces";
+import { ProfileAvatar } from "@/components/profile/profile-avatar";
+import { ProfilePhotoControls } from "@/components/profile/profile-photo-controls";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -370,8 +372,14 @@ export function ProfilePageContent({
           </p>
         </div>
         <BusinessSurface className="space-y-4 p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap items-start gap-3">
+            <ProfileAvatar
+              avatarUrl={profile.avatarUrl}
+              fullName={profile.fullName || profile.businessName || ""}
+              handle={profile.username}
+              sizeClass="size-14 shrink-0 sm:size-[4.5rem]"
+            />
+            <div className="min-w-0 flex-1 space-y-2">
               <BusinessSectionLabel>Verified partner</BusinessSectionLabel>
               <h1 className="font-heading text-2xl font-extrabold tracking-tight text-white">
                 {profile.businessName?.trim() || "Your business"}
@@ -387,6 +395,7 @@ export function ProfilePageContent({
               <p className="text-xs font-medium text-zinc-500">@{profile.username}</p>
             </div>
           </div>
+          <ProfilePhotoControls key={profile.avatarUrl} />
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-lg border border-amber-500/15 bg-black/40 p-3">
               <BusinessSectionLabel>Today&apos;s opportunity</BusinessSectionLabel>
@@ -553,19 +562,28 @@ export function ProfilePageContent({
           </p>
         </div>
         <HostSurface className="space-y-4 p-5">
-          <div className="space-y-2">
-            <HostSectionLabel>Verified host</HostSectionLabel>
-            <h1 className="font-heading text-2xl font-extrabold tracking-tight text-white">
-              {profile.organizationName?.trim() || "Your organization"}
-            </h1>
-            <div className="flex flex-wrap items-center gap-2">
-              <VerifiedPill />
-              <span className="rounded-md border border-pu-magenta/20 bg-pu-magenta/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-pu-magenta/90">
-                {orgType}
-              </span>
+          <div className="flex flex-wrap items-start gap-3">
+            <ProfileAvatar
+              avatarUrl={profile.avatarUrl}
+              fullName={profile.fullName || profile.organizationName || ""}
+              handle={profile.username}
+              sizeClass="size-14 shrink-0 sm:size-[4.5rem]"
+            />
+            <div className="min-w-0 flex-1 space-y-2">
+              <HostSectionLabel>Verified host</HostSectionLabel>
+              <h1 className="font-heading text-2xl font-extrabold tracking-tight text-white">
+                {profile.organizationName?.trim() || "Your organization"}
+              </h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <VerifiedPill />
+                <span className="rounded-md border border-pu-magenta/20 bg-pu-magenta/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-pu-magenta/90">
+                  {orgType}
+                </span>
+              </div>
+              <p className="text-xs font-medium text-white/50">@{profile.username}</p>
             </div>
-            <p className="text-xs font-medium text-white/50">@{profile.username}</p>
           </div>
+          <ProfilePhotoControls key={profile.avatarUrl} />
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-lg border border-pu-magenta/20 bg-black/40 p-3">
               <HostSectionLabel>Next move</HostSectionLabel>
@@ -739,15 +757,12 @@ export function ProfilePageContent({
 
         <header className="overflow-hidden rounded-[1.35rem] border border-pu-border bg-gradient-to-br from-pu-surface/95 via-pu-surface-deep to-black p-5 shadow-[0_0_40px_-14px_oklch(0.7_0.29_328/0.28)]">
           <div className="flex gap-4">
-            <div className="relative size-[4.5rem] shrink-0 overflow-hidden rounded-full ring-2 ring-pu-magenta/35 ring-offset-2 ring-offset-zinc-950 sm:size-20">
-              <Image
-                src={profile.avatarUrl}
-                alt=""
-                fill
-                className="object-cover"
-                sizes="80px"
-              />
-            </div>
+            <ProfileAvatar
+              avatarUrl={profile.avatarUrl}
+              fullName={profile.fullName}
+              handle={profile.username}
+              sizeClass="size-[4.5rem] sm:size-20"
+            />
             <div className="min-w-0 flex-1 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="font-heading text-xl font-extrabold tracking-tight text-white sm:text-2xl">
@@ -774,6 +789,8 @@ export function ProfilePageContent({
               ) : null}
             </div>
           </div>
+
+          <ProfilePhotoControls key={profile.avatarUrl} />
 
           {selectedInterests.length > 0 ? (
             <div className="mt-4 flex flex-wrap gap-1.5">

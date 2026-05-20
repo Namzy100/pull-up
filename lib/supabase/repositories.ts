@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { DEFAULT_BUSINESS_EVENT_IMAGE } from "@/lib/supabase/business-deal-payload";
 import type { Database } from "@/lib/supabase/database.types";
+import { normalizeStoredProfileAvatarUrl } from "@/lib/profile-image-url";
 import type {
   MockProfileSession,
   MockUserRole,
@@ -501,9 +502,7 @@ export function profileRowToMockSession(profile: DbProfile): MockProfileSession 
     username: profile.username,
     fullName: profile.full_name ?? "",
     campus: profile.campus ?? "",
-    avatarUrl:
-      profile.avatar_url ??
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80",
+    avatarUrl: normalizeStoredProfileAvatarUrl(profile.avatar_url),
     role: profile.role,
     requestedRole: profile.requested_role,
     verificationStatus: profile.verification_status,

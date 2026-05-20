@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 
+import { ProfileAvatar } from "@/components/profile/profile-avatar";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/use-app-store";
 
@@ -34,15 +34,13 @@ export function AdminShellChrome({
     <header className="sticky top-0 z-30 border-b border-zinc-800/90 bg-zinc-950/95 backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-950/88">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-2 gap-y-2 px-3 py-2.5 sm:gap-3 sm:px-4">
         <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:flex-initial sm:min-w-[12rem]">
-          <div className="relative size-9 shrink-0 overflow-hidden rounded-full ring-1 ring-zinc-700">
-            <Image
-              src={avatarUrl}
-              alt=""
-              fill
-              className="object-cover"
-              sizes="36px"
-            />
-          </div>
+          <ProfileAvatar
+            avatarUrl={avatarUrl}
+            fullName={displayName}
+            handle={username}
+            sizeClass="size-9"
+            ringClassName="ring-1 ring-zinc-700 ring-offset-0"
+          />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="truncate text-sm font-semibold text-zinc-100">{displayName}</span>

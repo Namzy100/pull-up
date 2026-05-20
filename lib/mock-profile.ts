@@ -33,8 +33,7 @@ export const DEFAULT_MOCK_PROFILE: MockProfileSession = {
   username: "nightshift_uiuc",
   fullName: "Avery Carter",
   campus: "University of Illinois · Urbana-Champaign",
-  avatarUrl:
-    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80",
+  avatarUrl: "",
   role: "regular_user",
   requestedRole: "none",
   verificationStatus: "none",

@@ -1,5 +1,7 @@
 "use client";
 
+import type { PostgrestError } from "@supabase/supabase-js";
+
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import {
@@ -30,6 +32,7 @@ import {
   updateProfileVerification,
   upsertProfile,
 } from "@/lib/supabase/repositories";
+import { normalizeStoredProfileAvatarUrl } from "@/lib/profile-image-url";
 import type { MockProfileSession, PuInterestId } from "@/lib/types";
 
 async function getAuthedUserId() {
@@ -56,8 +59,7 @@ export async function syncProfileStateFromSupabase() {
     username: user.email?.split("@")[0] ?? "new_user",
     fullName: "",
     campus: "",
-    avatarUrl:
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80",
+    avatarUrl: "",
     role: "regular_user",
     requestedRole: "none",
     verificationStatus: "none",
@@ -169,7 +171,7 @@ export async function persistProfile(profile: MockProfileSession) {
     id: userId,
     username: profile.username,
     full_name: profile.fullName || null,
-    avatar_url: profile.avatarUrl || null,
+    avatar_url: normalizeStoredProfileAvatarUrl(profile.avatarUrl) || null,
     campus: profile.campus || null,
     role: profile.role,
     requested_role: profile.requestedRole,
@@ -202,6 +204,24 @@ export async function persistProfile(profile: MockProfileSession) {
     });
   }
   return result;
+}
+
+export async function persistAvatarUrl(
+  avatarUrl: string | null
+): Promise<{ error: PostgrestError | null }> {
+  const supabase = createSupabaseBrowserClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: null };
+  const { error } = await supabase
+    .from("profiles")
+    .update({ avatar_url: avatarUrl })
+    .eq("id", user.id);
+  if (error) {
+    console.error("[persistAvatarUrl]", formatSupabasePostgrestError(error));
+  }
+  return { error };
 }
 
 export async function persistHostSubmission(payload: Json) {
