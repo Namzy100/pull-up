@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 
 import { DEFAULT_BUSINESS_EVENT_IMAGE } from "@/lib/supabase/business-deal-payload";
 import type { Database } from "@/lib/supabase/database.types";
@@ -23,14 +23,32 @@ function isValidUrl(value: string): boolean {
   }
 }
 
-export async function getProfileById(client: DbClient, userId: string) {
+/** Distinguish “no row” from Postgrest/RLS errors (`.maybeSingle()` returns null data for both cases). */
+export async function fetchProfileForAuthUser(client: DbClient, userId: string) {
   const { data, error } = await client
     .from("profiles")
     .select("*")
     .eq("id", userId)
-    .single();
-  if (error) return null;
-  return data;
+    .maybeSingle();
+  if (error) {
+    console.warn(
+      "[profiles]",
+      JSON.stringify({
+        event: "fetchProfileForAuthUser_error",
+        authUserId: userId,
+        code: error.code,
+        message: error.message,
+      })
+    );
+    return { ok: false as const, row: null as DbProfile | null, error };
+  }
+  return { ok: true as const, row: (data ?? null) as DbProfile | null, error: null as PostgrestError | null };
+}
+
+export async function getProfileById(client: DbClient, userId: string) {
+  const res = await fetchProfileForAuthUser(client, userId);
+  if (!res.ok) return null;
+  return res.row;
 }
 
 export async function upsertProfile(

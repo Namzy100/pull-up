@@ -8,8 +8,20 @@ import { Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  SESSION_HYDRATION_TIMEOUT_MS,
+  withTimeout,
+} from "@/lib/auth-hydration";
+import {
+  computePostAuthDestination,
+  profileRowToPostAuthSlice,
+} from "@/lib/post-auth-routing";
+import { syncProfileStateFromSupabase } from "@/lib/supabase/client-persistence";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
+import { fetchProfileForAuthUser } from "@/lib/supabase/repositories";
+import { ensureMinimalStudentProfileIfMissing } from "@/lib/supabase/signup-bootstrap";
+import { useAppStore } from "@/store/use-app-store";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +37,13 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("profile_read_failed") === "1"
+      ? "Could not load your account profile. Try signing in again or use a different method."
+      : null;
+  });
 
   async function signInPassword(e: React.FormEvent) {
     e.preventDefault();
@@ -37,35 +55,130 @@ export default function LoginPage() {
       return;
     }
     const supabase = createSupabaseBrowserClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
-    if (authError) {
-      setError(authError.message);
-      setBusy(false);
-      return;
-    }
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    let destination = nextPath;
-    if (user) {
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (prof?.role === "admin") {
-        const allowConsumerSurface =
-          nextPath.startsWith("/admin") ||
-          nextPath.includes("previewAs=") ||
-          nextPath.includes("preview=user") ||
-          nextPath.includes("preview%3Duser");
-        if (!allowConsumerSurface) {
-          destination = "/admin";
-        }
+    try {
+      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError) {
+        setError(authError.message);
+        return;
       }
+
+      const {
+        data: { user },
+      } = await withTimeout(supabase.auth.getUser(), SESSION_HYDRATION_TIMEOUT_MS, "login-getUser");
+      if (!user) {
+        setError("Could not load session after sign-in.");
+        return;
+      }
+
+      console.info(
+        "[auth-routing]",
+        JSON.stringify({ event: "login_success", authUserId: user.id })
+      );
+
+      let profRes = await withTimeout(
+        fetchProfileForAuthUser(supabase, user.id),
+        SESSION_HYDRATION_TIMEOUT_MS,
+        "login-fetchProfile"
+      );
+
+      if (!profRes.ok) {
+        console.info(
+          "[auth-routing]",
+          JSON.stringify({
+            event: "profile_route_decision",
+            authUserId: user.id,
+            destination: null,
+            decision: "profile_fetch_failed",
+            code: profRes.error?.code ?? null,
+          })
+        );
+        setError("Could not load your account profile. Check your connection and try again.");
+        return;
+      }
+
+      let row = profRes.row;
+      if (!row) {
+        console.info(
+          "[auth-routing]",
+          JSON.stringify({ event: "profile_missing_for_auth_user", authUserId: user.id })
+        );
+        const ensured = await ensureMinimalStudentProfileIfMissing(supabase, user);
+        if (!ensured.ok) {
+          console.info(
+            "[auth-routing]",
+            JSON.stringify({
+              event: "profile_route_decision",
+              authUserId: user.id,
+              destination: null,
+              decision: "profile_ensure_failed",
+              code: ensured.code ?? null,
+            })
+          );
+          setError(ensured.error);
+          return;
+        }
+        profRes = await withTimeout(
+          fetchProfileForAuthUser(supabase, user.id),
+          SESSION_HYDRATION_TIMEOUT_MS,
+          "login-fetchProfile-retry"
+        );
+        if (!profRes.ok) {
+          console.info(
+            "[auth-routing]",
+            JSON.stringify({
+              event: "profile_route_decision",
+              authUserId: user.id,
+              destination: null,
+              decision: "profile_fetch_failed_after_ensure",
+              code: profRes.error?.code ?? null,
+            })
+          );
+          setError("Could not load your account profile after setup. Try again.");
+          return;
+        }
+        row = profRes.row;
+      }
+
+      const slice = row ? profileRowToPostAuthSlice(row) : null;
+      const { destination, decision } = computePostAuthDestination(nextPath, slice);
+      console.info(
+        "[auth-routing]",
+        JSON.stringify({
+          event: "profile_route_decision",
+          authUserId: user.id,
+          destination,
+          decision,
+          hasProfileRow: Boolean(row),
+        })
+      );
+
+      try {
+        const synced = await withTimeout(
+          syncProfileStateFromSupabase({ log: false }),
+          SESSION_HYDRATION_TIMEOUT_MS,
+          "login-sync"
+        );
+        if (synced) {
+          useAppStore.getState().hydrateFromSupabase(synced);
+        } else {
+          useAppStore.setState({ authReady: true, authUserId: user.id });
+        }
+      } catch {
+        useAppStore.setState({ authReady: true, authUserId: user.id });
+      }
+
+      router.replace(destination);
+      router.refresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.startsWith("timeout:")) {
+        setError("Sign-in took too long. Check your connection and try again.");
+      } else {
+        setError(msg || "Something went wrong.");
+      }
+    } finally {
+      setBusy(false);
     }
-    router.replace(destination);
-    router.refresh();
   }
 
   async function signInGoogle() {

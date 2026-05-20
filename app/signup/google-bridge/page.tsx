@@ -10,7 +10,11 @@ import {
 } from "@/lib/signup-pending-storage";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { completeSignupAfterAuth } from "@/lib/supabase/signup-bootstrap";
+import { getProfileById } from "@/lib/supabase/repositories";
+import {
+  completeSignupAfterAuth,
+  ensureMinimalStudentProfileIfMissing,
+} from "@/lib/supabase/signup-bootstrap";
 
 export default function SignupGoogleBridgePage() {
   const router = useRouter();
@@ -31,9 +35,29 @@ export default function SignupGoogleBridgePage() {
         router.replace("/login?next=/signup/google-bridge");
         return;
       }
+
       const pending = readPendingSignupFromStorage();
+      console.info(
+        "[signup/profile]",
+        JSON.stringify({
+          event: "google_bridge_start",
+          authUserId: user.id,
+          hasPendingForm: Boolean(pending),
+        })
+      );
+
       if (!pending) {
-        router.replace("/profile");
+        const ensured = await ensureMinimalStudentProfileIfMissing(supabase, user);
+        if (!ensured.ok) {
+          if (!cancelled) setError(ensured.error);
+          return;
+        }
+        const row = await getProfileById(supabase, user.id);
+        if (!cancelled) {
+          if (row?.onboarding_complete) router.replace("/");
+          else router.replace("/onboarding");
+          router.refresh();
+        }
         return;
       }
       const result = await completeSignupAfterAuth(supabase, user, pending.path, pending.fields);

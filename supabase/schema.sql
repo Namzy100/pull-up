@@ -287,7 +287,9 @@ $$;
 revoke all on function public.pu_is_admin() from public;
 grant execute on function public.pu_is_admin() to authenticated;
 
--- Legacy policy name from earlier schema revisions
+-- Profiles: authenticated users may read/insert/update only their own row (id = auth.uid()).
+-- Admins may read/update any row via pu_is_admin() (security definer, avoids RLS recursion).
+-- Required for email/OAuth signup: client upserts profiles.id = auth.users.id after session exists.
 drop policy if exists "profiles_self_write" on public.profiles;
 
 drop policy if exists "profiles_self_read" on public.profiles;

@@ -24,7 +24,9 @@ import {
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { formatSupabasePostgrestError } from "@/lib/supabase/postgrest-error";
-import { getProfileById, replaceInterests, upsertProfile } from "@/lib/supabase/repositories";
+import type { DbProfile } from "@/lib/supabase/repositories";
+import { fetchProfileForAuthUser, replaceInterests, upsertProfile } from "@/lib/supabase/repositories";
+import { ensureMinimalStudentProfileIfMissing } from "@/lib/supabase/signup-bootstrap";
 import type { PuInterestId } from "@/lib/types";
 import { useAppStore } from "@/store/use-app-store";
 
@@ -40,13 +42,46 @@ type OnboardingBootOutcome =
   | { status: "no_env" }
   | { status: "no_user" }
   | { status: "ready" }
-  | { status: "redirect"; href: string; label: string };
+  | { status: "redirect"; href: string; label: string; reason: string }
+  | { status: "profile_ensure_failed"; message: string }
+  | { status: "profile_read_failed"; message: string };
 
-function ensureClientAuthReady() {
-  const { authReady, hydrateLoggedOut } = useAppStore.getState();
-  if (!authReady) {
-    hydrateLoggedOut();
-    logAuthHydration("onboarding_auth_ready_set", { reason: "boot_finally" });
+async function finalizeOnboardingBootAuthState(trigger: string) {
+  const store = useAppStore.getState();
+  if (store.authReady) {
+    logAuthHydration("onboarding_auth_ready_skip", { trigger });
+    return;
+  }
+  if (!hasSupabaseEnv()) {
+    store.hydrateLoggedOut();
+    logAuthHydration("onboarding_auth_ready_set", { trigger, mode: "no_env" });
+    return;
+  }
+  try {
+    const supabase = createSupabaseBrowserClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      store.hydrateLoggedOut();
+      logAuthHydration("onboarding_auth_ready_set", { trigger, mode: "no_session" });
+      return;
+    }
+    const synced = await withTimeout(
+      syncProfileStateFromSupabase({ log: false }),
+      SESSION_HYDRATION_TIMEOUT_MS,
+      `onboarding-authReady-sync:${trigger}`
+    ).catch(() => null);
+    if (synced) {
+      store.hydrateFromSupabase(synced);
+      logAuthHydration("onboarding_auth_ready_set", { trigger, mode: "hydrated" });
+    } else {
+      useAppStore.setState({ authReady: true, authUserId: user.id });
+      logAuthHydration("onboarding_auth_ready_set", { trigger, mode: "minimal_session" });
+    }
+  } catch {
+    useAppStore.getState().hydrateLoggedOut();
+    logAuthHydration("onboarding_auth_ready_set", { trigger, mode: "error" });
   }
 }
 
@@ -73,22 +108,20 @@ export default function OnboardingPage() {
   const [bootRetryBusy, setBootRetryBusy] = useState(false);
   const [needsSignIn, setNeedsSignIn] = useState(false);
   const [bootRedirect, setBootRedirect] = useState<{ href: string; label: string } | null>(null);
+  const [bootFailureKind, setBootFailureKind] = useState<"read" | "ensure" | "generic">("generic");
 
   const bootStartedRef = useRef(false);
 
-  const applyProfileRow = useCallback(
-    (row: NonNullable<Awaited<ReturnType<typeof getProfileById>>>) => {
-      setUsername(row.username);
-      setFullName(row.full_name ?? "");
-      setCampus(row.campus ?? CAMPUS_OPTIONS[0]);
-      setInterests((row.interests ?? []) as PuInterestId[]);
-      setConsentAnalytics(row.consent_analytics);
-      setConsentPersonalization(row.consent_personalization);
-      setConsentLocation(row.consent_location);
-      setConsentMarketing(row.consent_marketing);
-    },
-    []
-  );
+  const applyProfileRow = useCallback((row: DbProfile) => {
+    setUsername(row.username);
+    setFullName(row.full_name ?? "");
+    setCampus(row.campus ?? CAMPUS_OPTIONS[0]);
+    setInterests((row.interests ?? []) as PuInterestId[]);
+    setConsentAnalytics(row.consent_analytics);
+    setConsentPersonalization(row.consent_personalization);
+    setConsentLocation(row.consent_location);
+    setConsentMarketing(row.consent_marketing);
+  }, []);
 
   const loadProfile = useCallback(async (): Promise<OnboardingBootOutcome> => {
     if (!envConfigured) {
@@ -116,39 +149,132 @@ export default function OnboardingPage() {
       return { status: "no_user" };
     }
 
-    const row = await getProfileById(supabase, user.id);
-    logAuthHydration("onboarding_profile_fetch_row_end", { hasProfile: Boolean(row) });
+    let profRes = await fetchProfileForAuthUser(supabase, user.id);
+    logAuthHydration("onboarding_profile_fetch_row_end", {
+      profileOk: profRes.ok,
+      hasProfile: Boolean(profRes.row),
+    });
+
+    if (!profRes.ok) {
+      const message = profRes.error
+        ? formatSupabasePostgrestError(profRes.error)
+        : "Could not load your profile.";
+      return { status: "profile_read_failed", message };
+    }
+
+    let row = profRes.row;
 
     if (!row) {
-      return { status: "redirect", href: "/signup", label: "Continue to signup" };
+      console.info(
+        "[auth-routing]",
+        JSON.stringify({ event: "profile_missing_for_auth_user", authUserId: user.id })
+      );
+      logAuthHydration("onboarding_profile_missing_ensure_start", { authUserId: user.id });
+      const ensured = await ensureMinimalStudentProfileIfMissing(supabase, user);
+      if (!ensured.ok) {
+        logAuthHydration("onboarding_profile_ensure_failed", {
+          authUserId: user.id,
+          code: ensured.code ?? null,
+        });
+        return { status: "profile_ensure_failed", message: ensured.error };
+      }
+      profRes = await fetchProfileForAuthUser(supabase, user.id);
+      if (!profRes.ok) {
+        const message = profRes.error
+          ? formatSupabasePostgrestError(profRes.error)
+          : "Could not load your profile after setup.";
+        return { status: "profile_read_failed", message };
+      }
+      row = profRes.row;
+      if (!row) {
+        logAuthHydration("onboarding_profile_ensure_still_missing", { authUserId: user.id });
+        return {
+          status: "profile_ensure_failed",
+          message: "We could not create your profile. Check your connection and try again.",
+        };
+      }
+      logAuthHydration("onboarding_profile_ensure_ok", {
+        authUserId: user.id,
+        created: ensured.created,
+      });
     }
 
     if (row.role !== "regular_user") {
-      return { status: "redirect", href: "/profile", label: "Open profile" };
+      const href = "/profile";
+      console.info(
+        "[auth-routing]",
+        JSON.stringify({
+          event: "onboarding_redirect_decision",
+          authUserId: user.id,
+          href,
+          reason: "non_student_role",
+        })
+      );
+      return { status: "redirect", href, label: "Open profile", reason: "non_student_role" };
     }
 
     if (row.requested_role === "host" || row.requested_role === "business") {
       if (row.verification_status === "pending") {
+        const href = "/onboarding/pending";
+        console.info(
+          "[auth-routing]",
+          JSON.stringify({
+            event: "onboarding_redirect_decision",
+            authUserId: user.id,
+            href,
+            reason: "verification_pending",
+          })
+        );
         return {
           status: "redirect",
-          href: "/onboarding/pending",
+          href,
           label: "View pending verification",
+          reason: "verification_pending",
         };
       }
       if (row.verification_status === "rejected") {
+        const href = "/onboarding/rejected";
+        console.info(
+          "[auth-routing]",
+          JSON.stringify({
+            event: "onboarding_redirect_decision",
+            authUserId: user.id,
+            href,
+            reason: "verification_rejected",
+          })
+        );
         return {
           status: "redirect",
-          href: "/onboarding/rejected",
+          href,
           label: "View verification status",
+          reason: "verification_rejected",
         };
       }
     }
 
     if (row.onboarding_complete) {
-      return { status: "redirect", href: "/", label: "Go to Tonight" };
+      const href = "/";
+      console.info(
+        "[auth-routing]",
+        JSON.stringify({
+          event: "onboarding_redirect_decision",
+          authUserId: user.id,
+          href,
+          reason: "onboarding_complete",
+        })
+      );
+      return { status: "redirect", href, label: "Go to Tonight", reason: "onboarding_complete" };
     }
 
     applyProfileRow(row);
+    console.info(
+      "[auth-routing]",
+      JSON.stringify({
+        event: "onboarding_profile_loaded",
+        authUserId: user.id,
+        onboardingComplete: row.onboarding_complete,
+      })
+    );
     logAuthHydration("onboarding_profile_fetch_ready");
     return { status: "ready" };
   }, [applyProfileRow, envConfigured]);
@@ -159,6 +285,7 @@ export default function OnboardingPage() {
       setBootError(null);
       setNeedsSignIn(false);
       setBootRedirect(null);
+      setBootFailureKind("generic");
       setBootRetryBusy(true);
       setBootLoading(true);
 
@@ -184,6 +311,16 @@ export default function OnboardingPage() {
             break;
           case "ready":
             break;
+          case "profile_read_failed":
+            setBootFailed(true);
+            setBootFailureKind("read");
+            setBootError(outcome.message);
+            break;
+          case "profile_ensure_failed":
+            setBootFailed(true);
+            setBootFailureKind("ensure");
+            setBootError(outcome.message);
+            break;
           case "redirect":
             setBootRedirect({ href: outcome.href, label: outcome.label });
             router.replace(outcome.href);
@@ -197,11 +334,12 @@ export default function OnboardingPage() {
           message: err instanceof Error ? err.message : String(err),
         });
         setBootFailed(true);
+        setBootFailureKind("generic");
         setBootError(message);
       } finally {
         setBootLoading(false);
         setBootRetryBusy(false);
-        ensureClientAuthReady();
+        await finalizeOnboardingBootAuthState(`boot_finally:${trigger}`);
         logAuthHydration("onboarding_boot_finally", { trigger });
       }
     },
@@ -226,10 +364,11 @@ export default function OnboardingPage() {
         });
         window.queueMicrotask(() => {
           setBootFailed(true);
+          setBootFailureKind("generic");
           setBootError(
             "Profile loading took too long. Retry, sign in again, or log out to reset."
           );
-          ensureClientAuthReady();
+          void finalizeOnboardingBootAuthState("hard_stop");
         });
         return false;
       });
@@ -249,6 +388,31 @@ export default function OnboardingPage() {
     setNeedsSignIn(false);
     router.replace(LOGIN_NEXT);
     router.refresh();
+  }
+
+  async function handleRepairProfile() {
+    if (!envConfigured) return;
+    setBootRetryBusy(true);
+    setBootError(null);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const {
+        data: { user },
+      } = await withTimeout(supabase.auth.getUser(), SESSION_HYDRATION_TIMEOUT_MS, "repair-getUser");
+      if (!user) {
+        setBootError("Session expired. Please sign in again.");
+        return;
+      }
+      const ensured = await ensureMinimalStudentProfileIfMissing(supabase, user);
+      if (!ensured.ok) {
+        setBootError(ensured.error);
+      }
+    } catch (err: unknown) {
+      setBootError(hydrationErrorMessage(err));
+    } finally {
+      setBootRetryBusy(false);
+      void runBoot("retry");
+    }
   }
 
   const canSubmit = useMemo(
@@ -374,7 +538,11 @@ export default function OnboardingPage() {
     return (
       <div className="pu-screen flex min-h-dvh flex-col items-center justify-center px-4 pb-8">
         <SessionHydrationRecovery
-          title="Couldn’t load your profile"
+          title={
+            bootFailureKind === "read"
+              ? "Could not load profile"
+              : "Couldn’t load your profile"
+          }
           message={
             bootError ??
             "Profile loading timed out. Retry, sign in again, or log out to reset."
@@ -383,6 +551,8 @@ export default function OnboardingPage() {
           onRetry={() => void runBoot("retry")}
           goToLoginHref={LOGIN_NEXT}
           onLogout={() => void handleBootLogout()}
+          onRepair={bootFailureKind === "ensure" ? () => void handleRepairProfile() : undefined}
+          repairLabel="Repair profile"
         />
       </div>
     );

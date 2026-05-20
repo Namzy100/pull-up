@@ -7,6 +7,7 @@ import { formatSupabasePostgrestError } from "@/lib/supabase/postgrest-error";
 import {
   createAccessRequest,
   createConsentEvent,
+  getProfileById,
   replaceInterests,
   upsertProfile,
 } from "@/lib/supabase/repositories";
@@ -77,6 +78,96 @@ function logProfileFailure(
   });
 }
 
+function logSignupProfileEvent(
+  event: string,
+  detail: Record<string, string | number | boolean | null | undefined>
+) {
+  console.info("[signup/profile]", JSON.stringify({ event, ...detail }));
+}
+
+/** Deterministic username for recovery rows (unique per auth user id). */
+export function defaultRecoveryUsername(userId: string): string {
+  return `pu_${userId.replace(/-/g, "")}`;
+}
+
+/**
+ * If `public.profiles` has no row for this user, insert a minimal student row
+ * (`onboarding_complete = false`) so onboarding can proceed.
+ */
+export async function ensureMinimalStudentProfileIfMissing(
+  client: DbClient,
+  user: { id: string; email?: string | null }
+): Promise<{ ok: true; created: boolean } | { ok: false; error: string; code?: string }> {
+  const existing = await getProfileById(client, user.id);
+  if (existing) {
+    logSignupProfileEvent("ensure_profile_skip", {
+      authUserId: user.id,
+      profileExists: true,
+    });
+    return { ok: true, created: false };
+  }
+
+  logSignupProfileEvent("ensure_profile_missing", {
+    authUserId: user.id,
+    profileExists: false,
+  });
+
+  const username = defaultRecoveryUsername(user.id);
+  const row: Database["public"]["Tables"]["profiles"]["Insert"] = {
+    id: user.id,
+    username,
+    full_name: null,
+    campus: "University of Illinois · Urbana-Champaign",
+    role: "regular_user",
+    requested_role: "none",
+    verification_status: "none",
+    onboarding_complete: false,
+    interests: [],
+    consent_analytics: false,
+    consent_personalization: false,
+    consent_location: false,
+    consent_marketing: false,
+    business_name: null,
+    business_type: null,
+    business_website: null,
+    business_contact: null,
+    organization_name: null,
+    organization_type: null,
+    verification_notes: null,
+  };
+
+  logSignupProfileEvent("ensure_profile_upsert_start", {
+    authUserId: user.id,
+    profileExists: false,
+  });
+
+  const { error, data } = await upsertProfile(client, row);
+  if (error) {
+    logSignupProfileEvent("ensure_profile_upsert_failed", {
+      authUserId: user.id,
+      code: error.code ?? null,
+      message: error.message,
+    });
+    return {
+      ok: false,
+      error: formatSupabasePostgrestError(error),
+      code: error.code,
+    };
+  }
+  if (!data) {
+    logSignupProfileEvent("ensure_profile_upsert_empty", {
+      authUserId: user.id,
+    });
+    return { ok: false, error: "Profile was not saved.", code: undefined };
+  }
+
+  logSignupProfileEvent("ensure_profile_upsert_ok", {
+    authUserId: user.id,
+    created: true,
+  });
+  return { ok: true, created: true };
+}
+
 async function pendingAccessRequestExists(
   client: DbClient,
   userId: string,
@@ -100,6 +191,8 @@ export async function completeSignupAfterAuth(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const userId = user.id;
   const email = user.email ?? null;
+
+  logSignupProfileEvent("bootstrap_start", { authUserId: userId, path });
 
   if (path === "student") {
     const f = fields as StudentSignupFields;
@@ -142,6 +235,11 @@ export async function completeSignupAfterAuth(
       );
       return { ok: false, error: "Profile was not saved." };
     }
+    logSignupProfileEvent("bootstrap_upsert_ok", {
+      authUserId: userId,
+      path: "student",
+      profileExists: true,
+    });
     const interestResult = await replaceInterests(client, userId, f.interests);
     if (interestResult.error) {
       console.error("[signup/interests]", {
@@ -202,6 +300,11 @@ export async function completeSignupAfterAuth(
       );
       return { ok: false, error: "Profile was not saved." };
     }
+    logSignupProfileEvent("bootstrap_upsert_ok", {
+      authUserId: userId,
+      path: "host",
+      profileExists: true,
+    });
 
     const hasPending = await pendingAccessRequestExists(client, userId, "host");
     if (!hasPending) {
@@ -280,6 +383,11 @@ export async function completeSignupAfterAuth(
     );
     return { ok: false, error: "Profile was not saved." };
   }
+  logSignupProfileEvent("bootstrap_upsert_ok", {
+    authUserId: userId,
+    path: "business",
+    profileExists: true,
+  });
 
   const hasPending = await pendingAccessRequestExists(client, userId, "business");
     if (!hasPending) {

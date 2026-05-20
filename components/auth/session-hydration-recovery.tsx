@@ -15,6 +15,9 @@ type SessionHydrationRecoveryProps = {
   goToLoginHref?: string;
   onGoToLogin?: () => void;
   goToLoginLabel?: string;
+  /** Optional third action (e.g. create minimal profile row). */
+  onRepair?: () => void;
+  repairLabel?: string;
 };
 
 export function SessionHydrationRecovery({
@@ -26,8 +29,11 @@ export function SessionHydrationRecovery({
   goToLoginHref,
   onGoToLogin,
   goToLoginLabel = "Go to login",
+  onRepair,
+  repairLabel = "Repair profile",
 }: SessionHydrationRecoveryProps) {
   const showLogin = Boolean(goToLoginHref || onGoToLogin);
+  const showRepair = Boolean(onRepair);
 
   return (
     <div
@@ -90,6 +96,18 @@ export function SessionHydrationRecovery({
         >
           Log out
         </Button>
+        {showRepair ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={busy}
+            className="rounded-lg font-bold"
+            onClick={onRepair}
+          >
+            {repairLabel}
+          </Button>
+        ) : null}
       </div>
     </div>
   );

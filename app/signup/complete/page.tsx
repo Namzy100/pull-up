@@ -10,7 +10,11 @@ import {
   clearPendingSignupStorage,
   readPendingSignupFromStorage,
 } from "@/lib/signup-pending-storage";
-import { completeSignupAfterAuth } from "@/lib/supabase/signup-bootstrap";
+import {
+  completeSignupAfterAuth,
+  ensureMinimalStudentProfileIfMissing,
+} from "@/lib/supabase/signup-bootstrap";
+import { getProfileById } from "@/lib/supabase/repositories";
 
 export default function SignupCompletePage() {
   const router = useRouter();
@@ -31,13 +35,58 @@ export default function SignupCompletePage() {
         router.replace("/login?next=/signup/complete");
         return;
       }
+
+      console.info(
+        "[signup/profile]",
+        JSON.stringify({
+          event: "signup_complete_start",
+          authUserId: user.id,
+        })
+      );
+
       const pending = readPendingSignupFromStorage();
+      console.info(
+        "[signup/profile]",
+        JSON.stringify({
+          event: "signup_complete_pending_state",
+          authUserId: user.id,
+          hasPendingForm: Boolean(pending),
+        })
+      );
       if (!pending) {
-        router.replace("/profile");
+        const ensured = await ensureMinimalStudentProfileIfMissing(supabase, user);
+        console.info(
+          "[signup/profile]",
+          JSON.stringify({
+            event: "signup_complete_no_pending",
+            authUserId: user.id,
+            ensureOk: ensured.ok,
+            created: ensured.ok ? ensured.created : null,
+          })
+        );
+        if (!ensured.ok) {
+          if (!cancelled) setError(ensured.error);
+          return;
+        }
+        const row = await getProfileById(supabase, user.id);
+        if (!cancelled) {
+          if (row?.onboarding_complete) router.replace("/");
+          else router.replace("/onboarding");
+          router.refresh();
+        }
         return;
       }
       const result = await completeSignupAfterAuth(supabase, user, pending.path, pending.fields);
       if (cancelled) return;
+      console.info(
+        "[signup/profile]",
+        JSON.stringify({
+          event: "signup_complete_bootstrap_result",
+          authUserId: user.id,
+          path: pending.path,
+          ok: result.ok,
+        })
+      );
       if (!result.ok) {
         setError(result.error);
         return;

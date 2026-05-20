@@ -66,6 +66,9 @@ export async function syncProfileStateFromSupabase(options?: { log?: boolean }) 
   log("profile_fetch_row_start", { userId });
   const profile = await getProfileById(supabase, userId);
   log("profile_fetch_row_end", { hasProfile: Boolean(profile) });
+  if (!profile) {
+    log("sync_profile_row_missing", { userId });
+  }
   const savedEventIds = await listSavedEventIds(supabase, userId);
   const rsvpedEventIds = await listRsvpEventIds(supabase, userId);
   const followedVenueIds = await listFollowedVenueIds(supabase, userId);

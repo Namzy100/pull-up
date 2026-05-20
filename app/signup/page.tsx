@@ -300,7 +300,20 @@ export default function SignupPage() {
     if (!path) return;
     const supabase = createSupabaseBrowserClient();
     const fields = buildFields();
+    console.info(
+      "[signup/profile]",
+      JSON.stringify({ event: "finalize_session_start", authUserId: user.id, path })
+    );
     const result = await completeSignupAfterAuth(supabase, user, path, fields);
+    console.info(
+      "[signup/profile]",
+      JSON.stringify({
+        event: "finalize_session_result",
+        authUserId: user.id,
+        path,
+        ok: result.ok,
+      })
+    );
     if (!result.ok) {
       setError(result.error);
       setBusy(false);
