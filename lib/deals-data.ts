@@ -22,7 +22,7 @@ export const MOCK_DEALS: PuDeal[] = [
     area: "Campustown",
     perk: "2 slices + tall boy",
     windowLabel: "Tonight · til 1am",
-    urgencyLabel: "Line building",
+    urgencyLabel: "Line getting long",
     imageUrl:
       "https://images.unsplash.com/photo-1513104890138-7c749960a6fc?w=800&q=80",
     imageAlt: "Pizza slice",
@@ -42,7 +42,7 @@ export const MOCK_DEALS: PuDeal[] = [
     area: "Downtown Champaign",
     perk: "Skip the price jump",
     windowLabel: "Doors · til 10pm",
-    urgencyLabel: "Ends soon",
+    urgencyLabel: "Dead until 10",
     imageUrl:
       "https://images.unsplash.com/photo-1571266028243-ea3d460b1c4b?w=800&q=80",
     imageAlt: "Nightclub lights",
@@ -61,7 +61,7 @@ export const MOCK_DEALS: PuDeal[] = [
     area: "Green St",
     perk: "$15 pitchers · big tables",
     windowLabel: "Tonight only",
-    urgencyLabel: "Hot near Green St",
+    urgencyLabel: "Everyone heading here after KAMS",
     imageUrl:
       "https://images.unsplash.com/photo-1558642452-9d2a7deb7f62?w=800&q=80",
     imageAlt: "Beer on bar",
@@ -81,7 +81,7 @@ export const MOCK_DEALS: PuDeal[] = [
     area: "Campus",
     perk: "Buy 2 get 1",
     windowLabel: "Til supplies last",
-    urgencyLabel: "Almost gone",
+    urgencyLabel: "Free line moving fast",
     imageUrl:
       "https://images.unsplash.com/photo-1543339308-43e59d6b73a6?w=800&q=80",
     imageAlt: "Sweet pastry food truck",
@@ -100,7 +100,7 @@ export const MOCK_DEALS: PuDeal[] = [
     area: "Green St",
     perk: "$3 double · after 9pm",
     windowLabel: "Til midnight",
-    urgencyLabel: "Student rush",
+    urgencyLabel: "Picked up after 10:30",
     imageUrl:
       "https://images.unsplash.com/photo-1495474478417-bef7d9292dee?w=800&q=80",
     imageAlt: "Coffee cup steam",
@@ -120,7 +120,7 @@ export const MOCK_DEALS: PuDeal[] = [
     area: "Campustown",
     perk: "4 for $12 warm",
     windowLabel: "Tonight · til 3am",
-    urgencyLabel: "Late night clutch",
+    urgencyLabel: "Afters snack run",
     imageUrl:
       "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=800&q=80",
     imageAlt: "Cookies on tray",
@@ -139,7 +139,7 @@ export const MOCK_DEALS: PuDeal[] = [
     area: "Downtown Urbana",
     perk: "$10 vintage tees",
     windowLabel: "Weekend popup",
-    urgencyLabel: "Low stock racks",
+    urgencyLabel: "Lowkey but moving",
     imageUrl:
       "https://images.unsplash.com/photo-1562157873-818bc0746dba?w=800&q=80",
     imageAlt: "Vintage clothing rack",
@@ -158,7 +158,7 @@ export const MOCK_DEALS: PuDeal[] = [
     area: "Green St",
     perk: "Free cheese slice · first 200",
     windowLabel: "11pm door drop",
-    urgencyLabel: "Student-only · ID check",
+    urgencyLabel: "Student-only · crowd spilling outside",
     imageUrl:
       "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=80",
     imageAlt: "Pizza in box",

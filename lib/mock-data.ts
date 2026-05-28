@@ -4,7 +4,7 @@ export const MOCK_EVENTS: PuEvent[] = [
   {
     id: "uiuc-001",
     venueId: "venue-phi-kappa-psi",
-    title: "ΦΚ Lawn — Neon Nights",
+    title: "ΦΚ Lawn Setup",
     category: "frat_party",
     categoryLabel: "Frat",
     area: "Gregory Dr",
@@ -17,7 +17,7 @@ export const MOCK_EVENTS: PuEvent[] = [
     ageRestriction: "18+",
     vibeMusic: "House / Jersey club",
     crowdStatus: "packed",
-    urgencyLabels: ["Packed right now", "Free entry ending soon"],
+    urgencyLabels: ["Packed rn", "Line moving fast"],
     imageUrl:
       "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=900&q=80",
     imageAlt: "Crowd under purple lights at a party",
@@ -29,14 +29,14 @@ export const MOCK_EVENTS: PuEvent[] = [
     fillPressurePct: 91,
     campusTrendRank: 1,
     description:
-      "Neon on the lawn, speakers already warm. Ratio policy is real — slide before it crests.",
+      "Speakers already up on the lawn. Group chats say this is where people are shifting after Lion.",
     hostLabel: "Phi Kappa Psi Social",
     externalUrl: "https://instagram.com/explore/tags/uiuc/",
   },
   {
     id: "uiuc-002",
     venueId: "venue-joes-brewery",
-    title: "Joe's Late Slice Rush",
+    title: "Joe's Late Slice Run",
     category: "food_deal",
     categoryLabel: "Food",
     area: "Campustown",
@@ -49,7 +49,7 @@ export const MOCK_EVENTS: PuEvent[] = [
     ageRestriction: "All ages",
     vibeMusic: "Bar noise / hip-hop",
     crowdStatus: "active",
-    urgencyLabels: ["2-for-1 ends at midnight", "Trending tonight"],
+    urgencyLabels: ["2-for-1 ends at midnight", "Post-bar rush"],
     imageUrl:
       "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=900&q=80",
     imageAlt: "Dim bar interior with bottles",
@@ -61,14 +61,14 @@ export const MOCK_EVENTS: PuEvent[] = [
     fillPressurePct: 72,
     campusTrendRank: 4,
     description:
-      "Slices + pours while the patio packs. Stacks run out when the rush hits — stake your spot.",
+      "Line picks up once KAMS starts thinning out. Quick food stop before the next move.",
     hostLabel: "Joe’s Brewery Campus",
     externalUrl: "https://www.joesbrewery.com/",
   },
   {
     id: "uiuc-003",
     venueId: "venue-kams",
-    title: "KAMS Turkey Toss Watch",
+    title: "KAMS Turkey Toss Watch Party",
     category: "watch_party",
     categoryLabel: "Watch party",
     area: "Green St",
@@ -93,14 +93,14 @@ export const MOCK_EVENTS: PuEvent[] = [
     fillPressurePct: 84,
     campusTrendRank: 2,
     description:
-      "Screens up, pours flowing, chants louder every quarter. Tables turn fast — rally the crew.",
+      "Bar's loud early, then spills to the sidewalk before 10. If you're meeting friends, pull up now.",
     hostLabel: "KAM’s",
     externalUrl: "https://instagram.com/",
   },
   {
     id: "uiuc-004",
     venueId: "venue-isr-rooftop",
-    title: "ISR Rooftop Glow Social",
+    title: "ISR Rooftop Mixer",
     category: "student_org",
     categoryLabel: "Student org",
     area: "ISR",
@@ -113,7 +113,7 @@ export const MOCK_EVENTS: PuEvent[] = [
     ageRestriction: "UIUC students",
     vibeMusic: "Afrobeats / pop",
     crowdStatus: "warming_up",
-    urgencyLabels: ["Ends in 30 mins", "RSVP closing"],
+    urgencyLabels: ["Dead until 9", "RSVP closing"],
     imageUrl:
       "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=900&q=80",
     imageAlt: "Outdoor concert lights at dusk",
@@ -125,14 +125,14 @@ export const MOCK_EVENTS: PuEvent[] = [
     fillPressurePct: 58,
     campusTrendRank: 7,
     description:
-      "Sunset vibes on the ISR roof with DJ between sets — RSVP taps close when spots max.",
+      "Starts slower, then picks up once people finish dinner runs on Green.",
     hostLabel: "International Student Association × ISR Council",
     externalUrl: "https://illinois.edu/",
   },
   {
     id: "uiuc-005",
     venueId: "venue-canvas",
-    title: "CANVAS Underground",
+    title: "CANVAS Late Set",
     category: "bar_club",
     categoryLabel: "Club",
     area: "Downtown Champaign",
@@ -145,7 +145,7 @@ export const MOCK_EVENTS: PuEvent[] = [
     ageRestriction: "21+",
     vibeMusic: "Techno / melodic house",
     crowdStatus: "packed",
-    urgencyLabels: ["Packed right now", "DJ peak set @ 12:30"],
+    urgencyLabels: ["Picked up after midnight", "Cover jumps at 11"],
     imageUrl:
       "https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=900&q=80",
     imageAlt: "Club lasers and dancing crowd",
@@ -157,14 +157,14 @@ export const MOCK_EVENTS: PuEvent[] = [
     fillPressurePct: 94,
     campusTrendRank: 3,
     description:
-      "Warehouse energy, melodic drops at peak. Lineup’s tight — don’t gamble on rolling up late solo.",
+      "Downtown move once Campustown closes out. Usually the afters crowd lands here.",
     hostLabel: "CANVAS Nights",
     externalUrl: "https://instagram.com/explore/tags/champaign/",
   },
   {
     id: "uiuc-006",
     venueId: "venue-main-quad-south",
-    title: "Quad Jazz & Chill",
+    title: "Quad Jazz & Chill Set",
     category: "campus",
     categoryLabel: "Campus",
     area: "Main Quad",
@@ -177,7 +177,7 @@ export const MOCK_EVENTS: PuEvent[] = [
     ageRestriction: "All ages",
     vibeMusic: "Live jazz",
     crowdStatus: "chill",
-    urgencyLabels: ["Low-key vibe", "Ends soon"],
+    urgencyLabels: ["Lowkey vibe", "Ends soon"],
     imageUrl:
       "https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=900&q=80",
     imageAlt: "Musicians performing outdoors",
@@ -188,13 +188,13 @@ export const MOCK_EVENTS: PuEvent[] = [
     pullUpsLastHour: 9,
     campusTrendRank: 12,
     description:
-      "Ambient jazz blankets the quad benches — breathable air between the louder moves tonight.",
+      "Soft pregame energy before everyone splits to bars or apartment pres.",
     hostLabel: "Illini Union Board × Jazz Society",
   },
   {
     id: "uiuc-007",
     venueId: "venue-red-lion",
-    title: "Red Lion Karaoke Chaos",
+    title: "Red Lion Karaoke",
     category: "bar_club",
     categoryLabel: "Bar",
     area: "Green St",
@@ -207,7 +207,7 @@ export const MOCK_EVENTS: PuEvent[] = [
     ageRestriction: "21+ after 9",
     vibeMusic: "Karaoke top hits",
     crowdStatus: "active",
-    urgencyLabels: ["Trending tonight"],
+    urgencyLabels: ["Line getting long", "Afters shifting later"],
     imageUrl:
       "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=900&q=80",
     imageAlt: "Microphone on stage with colorful lights",
@@ -219,14 +219,14 @@ export const MOCK_EVENTS: PuEvent[] = [
     fillPressurePct: 66,
     campusTrendRank: 5,
     description:
-      "Stages open mic style — queue moves quick, crowd picks the next anthem. Loud and unserious.",
+      "Crowd rotates all night here. People usually bounce from Lion to nearby afters around midnight.",
     hostLabel: "The Red Lion",
     externalUrl: "https://instagram.com/",
   },
   {
     id: "uiuc-008",
     venueId: "venue-siebel-atrium",
-    title: "Siebel CS Pop-up Mixer",
+    title: "Siebel Atrium Pop-up",
     category: "pop_up",
     categoryLabel: "Pop-up",
     area: "Siebel Center",
@@ -239,7 +239,7 @@ export const MOCK_EVENTS: PuEvent[] = [
     ageRestriction: "Students",
     vibeMusic: "Lo-fi / chatter",
     crowdStatus: "warming_up",
-    urgencyLabels: ["Free pizza while it lasts"],
+    urgencyLabels: ["Free food moving fast"],
     imageUrl:
       "https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=900&q=80",
     imageAlt: "Students mingling in a modern atrium",
@@ -250,7 +250,7 @@ export const MOCK_EVENTS: PuEvent[] = [
     pullUpsLastHour: 15,
     fillPressurePct: 41,
     description:
-      "CS + design club hangs with recruiters floating through — free fuel while it lasts.",
+      "Quick student pop-up, mostly pregame energy before people head out.",
     hostLabel: "ACM @ UIUC",
     externalUrl: "https://acm.illinois.edu/",
   },

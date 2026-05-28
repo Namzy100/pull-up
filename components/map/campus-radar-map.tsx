@@ -116,6 +116,15 @@ export function CampusRadarMap({
   );
 
   const zoneStrengths = useMemo(() => zonePulseStrengths(eventsOnMap), [eventsOnMap]);
+  const nowHour = new Date().getHours();
+  const zoneMoodLine = useMemo(() => {
+    const labeled = MAP_ZONE_LABELS.map((z, i) => ({ label: z.label, s: zoneStrengths[i] ?? 0 }));
+    const hottest = [...labeled].sort((a, b) => b.s - a.s)[0];
+    const coolest = [...labeled].sort((a, b) => a.s - b.s)[0];
+    const timeTag = nowHour < 22 ? "pre-peak" : nowHour < 24 ? "peak shift" : "late-night shift";
+    if (!hottest || !coolest) return "Live pulse updating.";
+    return `${timeTag}: ${hottest.label} heating up, ${coolest.label} cooling off.`;
+  }, [nowHour, zoneStrengths]);
 
   const selectedEvent = useMemo(
     () =>
@@ -151,10 +160,10 @@ export function CampusRadarMap({
             See where the night is heating up.
           </h1>
           <p className="pu-meta-strong max-w-[22rem] text-[0.8125rem] leading-relaxed">
-            Hot zones pulse from live activity — tap a pin to lock a move.
+            Watch where crowds are shifting, then pick your move.
           </p>
           <p className="pu-meta max-w-[22rem] text-[0.8125rem] leading-relaxed">
-            Mock UIUC grid tonight (no GPS yet).
+            {zoneMoodLine}
           </p>
         </header>
 
@@ -392,6 +401,13 @@ export function CampusRadarMap({
                       {crowdLabel(selectedEvent.crowdStatus)} ·{" "}
                       {selectedEvent.urgencyLabels[0] ?? "Tonight"}
                     </p>
+                    <p className="text-[11px] font-medium text-white/60">
+                      {selectedEvent.venueName.toLowerCase().includes("kam")
+                        ? "people moving here from Lion"
+                        : selectedEvent.venueName.toLowerCase().includes("lion")
+                          ? "crowd spilling outside"
+                          : "afters shifting this way"}
+                    </p>
                   </div>
                   <div className="flex shrink-0 flex-col gap-2">
                     <FollowVenueButton
@@ -450,6 +466,9 @@ export function CampusRadarMap({
                     </p>
                     <p className="text-[11px] font-bold text-fuchsia-300/95">
                       {selectedDeal.urgencyLabel}
+                    </p>
+                    <p className="text-[11px] font-medium text-white/60">
+                      {nowHour < 22 ? "quiet now, picks up later" : "moving in real time"}
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col gap-2">

@@ -67,9 +67,9 @@ function formatMemberSince(iso: string) {
 
 function ProfileScreen({ children }: { children: React.ReactNode }) {
   return (
-    <div className="pu-screen pb-8 pt-8 sm:pt-10">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[380px] bg-[radial-gradient(ellipse_88%_58%_at_50%_-12%,oklch(0.55_0.22_328/0.2),transparent_58%)]" />
-      <div className="relative mx-auto w-full max-w-lg space-y-7 px-4">{children}</div>
+    <div className="pu-screen pb-8 pt-7 sm:pt-9">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[300px] bg-[radial-gradient(ellipse_88%_58%_at_50%_-12%,oklch(0.55_0.22_328/0.12),transparent_60%)]" />
+      <div className="relative mx-auto w-full max-w-xl space-y-6 px-3 sm:px-4">{children}</div>
     </div>
   );
 }
@@ -185,6 +185,17 @@ export function ProfilePageContent({
 
   const social = profile.businessWebsite?.trim();
   const socialIsUrl = Boolean(social?.startsWith("http"));
+  const favoriteMoveType =
+    selectedInterests.length > 0
+      ? INTEREST_OPTIONS.find((opt) => opt.id === selectedInterests[0])?.label ?? "Open format"
+      : "Open format";
+  const usualArea = profile.campus?.toLowerCase().includes("illinois")
+    ? "Green St + Campustown"
+    : profile.campus || "Campustown";
+  const seenAt =
+    rsvpEvents.length > 0 ? rsvpEvents[0]?.venueName ?? "KAMS / Lion" : "KAMS / Lion";
+  const aftersFrequency =
+    rsvpEvents.length >= 4 ? "most weekends" : rsvpEvents.length >= 2 ? "some weekends" : "occasional";
 
   if (
     accountRole === "regular_user" &&
@@ -755,7 +766,7 @@ export function ProfilePageContent({
           </div>
         ) : null}
 
-        <header className="overflow-hidden rounded-[1.35rem] border border-pu-border bg-gradient-to-br from-pu-surface/95 via-pu-surface-deep to-black p-5 shadow-[0_0_40px_-14px_oklch(0.7_0.29_328/0.28)]">
+        <header className="overflow-hidden rounded-[1.35rem] border border-white/[0.1] bg-gradient-to-b from-zinc-900/95 to-black p-5 shadow-[0_14px_40px_-26px_rgba(0,0,0,0.92)]">
           <div className="flex gap-4">
             <ProfileAvatar
               avatarUrl={profile.avatarUrl}
@@ -768,7 +779,7 @@ export function ProfilePageContent({
                 <h1 className="font-heading text-xl font-extrabold tracking-tight text-white sm:text-2xl">
                   @{profile.username}
                 </h1>
-                <span className="rounded-full border border-pu-amber/35 bg-pu-amber/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-pu-amber">
+                <span className="rounded-full bg-white/[0.1] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/82">
                   {mockRoleLabel(accountRole)}
                 </span>
               </div>
@@ -779,9 +790,23 @@ export function ProfilePageContent({
                 <MapPin className="mt-0.5 size-3.5 shrink-0 text-pu-magenta" aria-hidden />
                 <span>{profile.campus}</span>
               </p>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-white/45">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-white/45">
                 Member since {formatMemberSince(profile.memberSince)}
               </p>
+              <div className="grid gap-1.5 pt-1 text-[11px] font-medium text-white/62">
+                <p>
+                  <span className="text-white/42">favorite move:</span> {favoriteMoveType}
+                </p>
+                <p>
+                  <span className="text-white/42">usually out in:</span> {usualArea}
+                </p>
+                <p>
+                  <span className="text-white/42">afters:</span> {aftersFrequency}
+                </p>
+                <p>
+                  <span className="text-white/42">seen at:</span> {seenAt}
+                </p>
+              </div>
               {profile.verificationStatus === "pending" ? (
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-pu-amber">
                   Your account is under review.
@@ -800,7 +825,7 @@ export function ProfilePageContent({
                 return (
                   <span
                     key={id}
-                    className="rounded-full border border-white/12 bg-black/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white/85"
+                    className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/82"
                   >
                     {opt.label}
                   </span>
@@ -808,13 +833,13 @@ export function ProfilePageContent({
               })}
             </div>
           ) : (
-            <p className="pu-meta mt-4 text-[0.8125rem]">
-              No vibe lanes yet — tune them in the{" "}
+            <p className="pu-meta mt-4 text-[0.8125rem] text-white/65">
+              No lanes set yet - tune them in the{" "}
               <span className="text-pu-magenta">Interests</span> tab.
             </p>
           )}
 
-          <div className="mt-5 grid grid-cols-3 gap-2 border-t border-pu-border pt-4">
+          <div className="mt-5 grid grid-cols-3 gap-2 border-t border-white/[0.08] pt-4">
             <StatMini
               icon={Bookmark}
               label="Saved events"
@@ -828,8 +853,8 @@ export function ProfilePageContent({
             />
           </div>
           {savedDeals.length > 0 ? (
-            <p className="pu-meta mt-3 text-center text-[0.75rem]">
-              + {savedDeals.length} saved deal{savedDeals.length === 1 ? "" : "s"} in Deals
+            <p className="mt-3 text-center text-[0.76rem] font-medium text-white/58">
+              + {savedDeals.length} deal{savedDeals.length === 1 ? "" : "s"} saved
             </p>
           ) : null}
           {accountRole === "admin" && !isAdminConsumerPreview ? (
@@ -855,12 +880,12 @@ export function ProfilePageContent({
           {accountRole === "regular_user" &&
           profile.requestedRole === "none" &&
           profile.verificationStatus !== "pending" ? (
-            <div className="mt-3 flex flex-wrap gap-2 border-t border-pu-border pt-3">
+            <div className="mt-3 flex flex-wrap gap-2 border-t border-white/[0.08] pt-3">
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
-                className="border-pu-border text-xs font-bold"
+                className="border-white/12 bg-white/[0.04] text-xs font-semibold"
                 onClick={() => void requestRoleAccess("host")}
               >
                 Request Host Access
@@ -869,7 +894,7 @@ export function ProfilePageContent({
                 type="button"
                 size="sm"
                 variant="outline"
-                className="border-pu-border text-xs font-bold"
+                className="border-white/12 bg-white/[0.04] text-xs font-semibold"
                 onClick={() => void requestRoleAccess("business")}
               >
                 Request Business Access
@@ -879,12 +904,12 @@ export function ProfilePageContent({
               ) : null}
             </div>
           ) : null}
-          <div className="mt-3 border-t border-pu-border pt-3">
+          <div className="mt-3 border-t border-white/[0.08] pt-3">
             <Button
               type="button"
               size="sm"
               variant="outline"
-              className="border-pu-border text-xs font-bold"
+              className="border-white/12 bg-white/[0.04] text-xs font-semibold"
               onClick={() => void handleLogout()}
             >
               Log out
@@ -992,7 +1017,7 @@ export function ProfilePageContent({
                 {followedSpots.map((spot) => (
                   <li
                     key={spot.id}
-                    className="flex items-center gap-3 rounded-2xl border border-pu-border bg-black/40 p-3"
+                    className="flex items-center gap-3 rounded-2xl bg-white/[0.05] p-3"
                   >
                     <div className="relative size-14 shrink-0 overflow-hidden rounded-xl">
                       <Image
@@ -1004,7 +1029,7 @@ export function ProfilePageContent({
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-pu-amber">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-white/55">
                         {kindLabel(spot.kind)}
                       </p>
                       <p className="font-heading text-base font-extrabold text-white">
@@ -1141,12 +1166,12 @@ function StatMini({
   value: number;
 }) {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-black/35 px-2 py-2 text-center">
-      <Icon className="mx-auto size-4 text-pu-magenta" aria-hidden />
+    <div className="rounded-xl bg-white/[0.05] px-2 py-2 text-center">
+      <Icon className="mx-auto size-4 text-white/72" aria-hidden />
       <p className="mt-1 font-heading text-lg font-extrabold tabular-nums text-white">
         {value}
       </p>
-      <p className="text-[9px] font-bold uppercase tracking-wide text-white/45">
+      <p className="text-[9px] font-semibold uppercase tracking-wide text-white/45">
         {label}
       </p>
     </div>

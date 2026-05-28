@@ -46,12 +46,25 @@ export function SocialProofRow({
 
   const trending =
     event.campusTrendRank !== undefined && event.campusTrendRank <= 8;
+  const hour = new Date().getHours();
+  const liveLine =
+    hour < 21
+      ? "dead til later"
+      : hour < 24
+        ? "line getting long"
+        : "picked up after midnight";
+  const shiftLine =
+    event.area.toLowerCase().includes("green") || event.venueName.toLowerCase().includes("kams")
+      ? "crowd moving in from Lion"
+      : event.venueName.toLowerCase().includes("canvas")
+        ? "afters shifting this way"
+        : "group chats saying pull up";
 
   return (
     <div className={cn("space-y-2.5", className)}>
       <div
         className={cn(
-          "flex flex-wrap items-center gap-2 rounded-xl border border-pu-border bg-pu-surface-deep/80 px-2.5 py-2 sm:px-3",
+          "flex flex-wrap items-center gap-2 rounded-xl bg-white/[0.05] px-2.5 py-2 sm:px-3",
           compact && "gap-1.5 px-2 py-1.5"
         )}
       >
@@ -106,7 +119,7 @@ export function SocialProofRow({
               aria-hidden
             />
           </motion.span>
-          {pullUps}/hr
+          {pullUps} pulling up/hr
         </motion.span>
         {trending && !compact ? (
           <motion.span
@@ -121,7 +134,7 @@ export function SocialProofRow({
             transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
           >
             <TrendingUp className="size-3 shrink-0" aria-hidden />
-            #{event.campusTrendRank} campus
+            #{event.campusTrendRank} trending
           </motion.span>
         ) : trending && compact ? (
           <span className="inline-flex items-center gap-0.5 rounded-md border border-pu-amber/30 bg-pu-amber/10 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-pu-amber">
@@ -134,7 +147,7 @@ export function SocialProofRow({
       {fill !== null && fill >= 45 && !compact && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.12em] text-white/50">
-            <span>Filling fast</span>
+            <span>line building</span>
             <span className="tabular-nums text-pu-urgent-glow">{fill}%</span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-black/50 ring-1 ring-white/8">
@@ -153,6 +166,11 @@ export function SocialProofRow({
           </div>
         </div>
       )}
+      {!compact ? (
+        <p className="text-[11px] font-medium text-white/62">
+          {liveLine} - {shiftLine}
+        </p>
+      ) : null}
     </div>
   );
 }
