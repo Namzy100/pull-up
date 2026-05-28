@@ -4,14 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { motion } from "framer-motion";
-import { Bookmark, Eye, Flame, Radio, Search, X, Zap } from "lucide-react";
+import { Bookmark, Search, X } from "lucide-react";
 
 import { LiveAmbient } from "@/components/feed/live-ambient";
 import { DealCard } from "@/components/deals/deal-card";
 import { EventCard } from "@/components/events/event-card";
 import { useCampusLiveSubscription } from "@/hooks/use-campus-live-subscription";
 import type { PuDeal, PuEvent } from "@/lib/types";
-import { formatCompactCount } from "@/lib/event-utils";
 import {
   filterEventsByInterests,
   getRecommendedEvents,
@@ -156,9 +155,9 @@ export function TonightHome({
   return (
     <div className="pu-screen">
       <LiveAmbient />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_88%_62%_at_50%_-14%,oklch(0.55_0.22_328/0.26),transparent_58%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-[radial-gradient(ellipse_85%_58%_at_50%_-14%,oklch(0.55_0.22_328/0.15),transparent_60%)]" />
 
-      <div className="relative mx-auto flex w-full max-w-lg flex-col gap-7 px-4 pb-3 pt-9 sm:gap-8 sm:pt-11">
+      <div className="relative mx-auto flex w-full max-w-lg flex-col gap-7 px-4 pb-3 pt-8 sm:gap-8 sm:pt-10">
         {demoMode ? (
           <div className="flex flex-col gap-3 rounded-2xl border border-amber-200/25 bg-amber-500/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
@@ -198,92 +197,36 @@ export function TonightHome({
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="space-y-4"
+          className="space-y-5"
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1 space-y-2.5">
-              <p className="pu-eyebrow text-pu-magenta/95">UIUC tonight</p>
-              <div className="space-y-1.5">
-                <h1 className="pu-display max-w-[11ch] text-balance sm:max-w-none">Pull Up</h1>
-                <div className="h-1 w-[min(56%,12rem)] rounded-full bg-gradient-to-r from-pu-magenta via-pu-amber to-transparent opacity-90" />
-              </div>
-              <p className="pu-meta-strong max-w-[18rem] text-[0.8125rem] leading-relaxed">
-                Campus is moving. Stay on the pulse or miss it.
+          <div className="space-y-2">
+            <p className="pu-eyebrow text-white/55">UIUC tonight</p>
+            <div className="space-y-2">
+              <h1 className="font-heading text-[2rem] font-extrabold leading-[0.95] tracking-[-0.04em] text-white sm:text-[2.2rem]">
+                Something&apos;s already happening.
+              </h1>
+              <p className="max-w-[22rem] text-[0.92rem] font-medium leading-relaxed text-white/70">
+                Live scenes across Campustown. Find the move before the line does.
               </p>
-            </div>
-
-            <div className="flex shrink-0 flex-col items-end gap-2">
-              <motion.div
-                animate={{ scale: [1, 1.04, 1] }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 2.8,
-                  ease: "easeInOut",
-                }}
-                className="rounded-2xl border border-pu-live/28 bg-pu-surface-deep/95 px-3 py-2.5 shadow-[0_4px_24px_-12px_oklch(0.86_0.22_145/0.25)]"
-              >
-                <span className="relative flex justify-center">
-                  <span className="absolute inline-flex size-3 animate-ping rounded-full bg-pu-live/70" />
-                  <span className="relative inline-flex size-3 rounded-full bg-pu-live" />
-                </span>
-                <span className="mt-2 flex items-center justify-center gap-1 text-[10px] font-black uppercase tracking-[0.16em] text-pu-live">
-                  <Radio className="size-3.5 text-pu-live" aria-hidden />
-                  Live
-                </span>
-              </motion.div>
-              <Link
-                href="/my-events"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-pu-border bg-black/50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white/92 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition active:scale-[0.98] hover:border-pu-magenta/40 hover:text-white"
-              >
-                <Bookmark className="size-3.5 text-pu-magenta" aria-hidden />
-                My Events
-              </Link>
             </div>
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.4 }}
-            className="flex flex-wrap gap-2"
-          >
-            <span className="inline-flex items-center gap-1.5 rounded-xl border border-pu-border bg-pu-surface-deep/90 px-3 py-2 text-[11px] font-bold tabular-nums text-white/92 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-              <span className="size-1.5 shrink-0 rounded-full bg-pu-urgent shadow-[0_0_10px_oklch(0.64_0.22_28/0.75)]" />
-              {pulse.liveVenues} live scenes
-            </span>
-            <motion.span
-              className="inline-flex items-center gap-1.5 rounded-xl border border-pu-magenta/30 bg-pu-magenta-dim/25 px-3 py-2 text-[11px] font-bold tabular-nums text-white"
-              animate={{
-                boxShadow: [
-                  "0 0 0 0 oklch(0.7 0.29 328 / 0)",
-                  "0 0 20px -6px oklch(0.7 0.29 328 / 0.35)",
-                  "0 0 0 0 oklch(0.7 0.29 328 / 0)",
-                ],
-              }}
-              transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[0.78rem] font-semibold uppercase tracking-[0.13em] text-white/55">
+              {pulse.liveVenues} scenes live now
+            </p>
+            <Link
+              href="/my-events"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-3 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-white/82 transition hover:bg-white/[0.12]"
             >
-              <motion.span
-                animate={{ rotate: [0, -10, 8, 0] }}
-                transition={{
-                  duration: 2.4,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  repeatDelay: 0.8,
-                }}
-              >
-                <Zap className="size-3.5 text-pu-amber" aria-hidden />
-              </motion.span>
-              {formatCompactCount(pulse.pullUpsLastHour)} pulls / hr
-            </motion.span>
-            <span className="inline-flex items-center gap-1.5 rounded-xl border border-pu-border bg-pu-surface/80 px-3 py-2 text-[11px] font-bold tabular-nums text-white/85">
-              <Eye className="size-3.5 shrink-0 text-pu-amber" aria-hidden />
-              {formatCompactCount(pulse.spottingLive)} watching live
-            </span>
-          </motion.div>
+              <Bookmark className="size-3.5" aria-hidden />
+              My Events
+            </Link>
+          </div>
 
           <div className="relative">
             <Search
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-pu-magenta/85"
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/45"
               aria-hidden
             />
             <Input
@@ -291,7 +234,7 @@ export function TonightHome({
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search parties, food, frats, dates…"
               aria-label="Search events"
-              className="h-11 rounded-2xl border-pu-border bg-black/50 py-2 pl-10 pr-11 text-[0.9375rem] font-semibold text-white placeholder:text-white/38 focus-visible:border-pu-magenta/50 focus-visible:ring-pu-magenta/25"
+              className="h-12 rounded-2xl border-white/10 bg-white/[0.04] py-2 pl-10 pr-11 text-[0.95rem] font-medium text-white placeholder:text-white/38 focus-visible:border-white/20 focus-visible:ring-0"
             />
             {searchActive ? (
               <button
@@ -315,8 +258,8 @@ export function TonightHome({
                   onClick={() => toggleInterest(interest.id)}
                   className={
                     active
-                      ? "rounded-full border border-pu-magenta/55 bg-pu-magenta-dim/35 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-white shadow-[0_0_18px_-8px_oklch(0.7_0.29_328/0.5)]"
-                      : "rounded-full border border-pu-border bg-black/45 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-white/58 transition active:scale-[0.98] hover:border-white/22 hover:text-white/90"
+                      ? "rounded-full bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-black"
+                      : "rounded-full bg-white/[0.06] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white/65 transition active:scale-[0.98] hover:bg-white/[0.12] hover:text-white/92"
                   }
                   aria-pressed={active}
                 >
@@ -375,7 +318,7 @@ export function TonightHome({
                 Trending tonight
               </h2>
               <p className="pu-meta mt-1">
-                Rankings shift as saves, RSVPs, and pull-up energy move in real time.
+                The moves everyone keeps sending in group chats.
               </p>
             </div>
             <div className="pu-strip-scroll gap-3">
@@ -395,6 +338,7 @@ export function TonightHome({
                 Rising near you
               </h2>
               <p className="pu-meta mt-1">Velocity + your campus lanes — not just raw saves.</p>
+              
             </div>
             <div className="pu-strip-scroll gap-3">
               {buckets.risingNearYou.map((event, index) => (
@@ -413,10 +357,10 @@ export function TonightHome({
                 Recommended for you
               </h2>
               <p className="pu-meta mt-1">
-                Personalized from your lanes + live campus momentum.
+                Based on your lanes and where energy is building.
               </p>
             </div>
-            <span className="rounded-lg border border-pu-magenta/35 bg-pu-magenta-dim/25 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white">
+            <span className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white/80">
               Your vibe
             </span>
           </div>
@@ -426,11 +370,7 @@ export function TonightHome({
               <div key={event.id} className="w-[min(82vw,300px)] shrink-0 snap-start">
                 <div className="mb-2 flex flex-wrap gap-1">
                   {(reasons.length > 0 ? reasons : ["Live right now"]).map((reason) => (
-                    <Badge
-                      key={reason}
-                      variant="outline"
-                      className="border-pu-amber/35 bg-black/50 text-[10px] font-bold text-pu-amber"
-                    >
+                    <Badge key={reason} variant="outline" className="border-white/15 bg-black/30 text-[10px] font-medium text-white/78">
                       {reason}
                     </Badge>
                   ))}
@@ -446,40 +386,18 @@ export function TonightHome({
         </section>
 
         <section aria-labelledby="hot-heading" className="space-y-3">
-          <div className="rounded-[1.25rem] border border-pu-border bg-gradient-to-b from-pu-surface-raised/95 via-pu-surface to-black p-px shadow-[0_0_40px_-14px_oklch(0.7_0.29_328/0.32)]">
-            <div className="rounded-[1.2rem] bg-gradient-to-br from-pu-surface/95 via-pu-surface-deep to-black px-3.5 pb-3.5 pt-3.5 sm:px-4 sm:pb-4 sm:pt-4">
+          <div className="rounded-[1.25rem] border border-white/10 bg-zinc-950 p-px">
+            <div className="rounded-[1.2rem] bg-zinc-950/95 px-3.5 pb-3.5 pt-3.5 sm:px-4 sm:pb-4 sm:pt-4">
               <div className="flex flex-wrap items-end justify-between gap-2.5">
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
-                    <motion.span
-                      animate={{ scale: [1, 1.08, 1] }}
-                      transition={{
-                        duration: 2.2,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                    >
-                      <Flame className="size-6 text-pu-amber drop-shadow-[0_0_14px_oklch(0.82_0.17_72/0.45)]" />
-                    </motion.span>
                     <h2 id="hot-heading" className="pu-section-title-lg">
                       Hot right now
                     </h2>
                   </div>
-                  <p className="pu-meta">Heat-ranked · switches fast tonight</p>
+                  <p className="pu-meta">Where everyone is pulling up next.</p>
                 </div>
-                <motion.span
-                  className="rounded-xl border border-pu-amber/45 bg-gradient-to-r from-pu-amber/18 to-pu-magenta/18 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-pu-amber"
-                  animate={{
-                    boxShadow: [
-                      "0 0 16px -8px oklch(0.82 0.17 72 / 0.2)",
-                      "0 0 24px -6px oklch(0.7 0.29 328 / 0.35)",
-                      "0 0 16px -8px oklch(0.82 0.17 72 / 0.2)",
-                    ],
-                  }}
-                  transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
-                >
-                  Miss it = L
-                </motion.span>
+                <span className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white/80">Tonight</span>
               </div>
 
               <div className="relative mt-3">

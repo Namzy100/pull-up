@@ -43,7 +43,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.08] bg-zinc-950/94 pb-[max(0.625rem,env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-12px_40px_-28px_rgba(0,0,0,0.85)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-950/82"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.06] bg-zinc-950/96 pb-[max(0.625rem,env(safe-area-inset-bottom))] pt-1 shadow-[0_-8px_28px_-24px_rgba(0,0,0,0.9)] backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/88"
       aria-label="Primary"
     >
       <div className="mx-auto flex max-w-lg items-stretch justify-around px-[max(0.375rem,env(safe-area-inset-left))] pr-[max(0.375rem,env(safe-area-inset-right))]">
@@ -63,22 +63,22 @@ export function BottomNav() {
               key={href}
               href={resolvedHref}
               className={cn(
-                "relative flex min-h-[3.5rem] min-w-0 flex-1 flex-col items-center justify-end gap-1 pb-2 text-[10px] font-semibold tracking-tight transition-colors active:opacity-90 sm:text-[11px]",
-                active ? "text-white" : "text-muted-foreground hover:text-white/90"
+                "relative flex min-h-[3.35rem] min-w-0 flex-1 flex-col items-center justify-end gap-1 pb-2 text-[10px] font-medium tracking-tight transition-colors active:opacity-90 sm:text-[11px]",
+                active ? "text-white" : "text-white/52 hover:text-white/85"
               )}
             >
               {active && (
                 <motion.span
                   layoutId="bottom-nav-pill"
-                  className="absolute inset-x-1.5 top-0.5 h-[2.875rem] rounded-2xl bg-gradient-to-r from-pu-magenta/18 to-pu-amber/12 ring-1 ring-white/[0.07]"
+                  className="absolute inset-x-2 top-1 h-[2.65rem] rounded-2xl bg-white/[0.05]"
                   transition={{ type: "spring", stiffness: 420, damping: 34 }}
                 />
               )}
               <span className="relative z-10 flex min-w-0 flex-col items-center gap-1">
                 <Icon
                   className={cn(
-                    "size-[1.4rem] shrink-0",
-                    active ? "text-pu-magenta" : "text-white/55"
+                    "size-[1.35rem] shrink-0",
+                    active ? "text-white" : "text-white/50"
                   )}
                   aria-hidden
                 />

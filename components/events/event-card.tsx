@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Bookmark, CalendarCheck, MapPin, Sparkles, Ticket } from "lucide-react";
+import { Bookmark, CalendarCheck, MapPin, Ticket } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -94,45 +94,14 @@ export function EventCard({
         className
       )}
     >
-      <motion.div
-        animate={
-          event.liveNow
-            ? {
-                boxShadow: [
-                  "0 0 0 0 oklch(0.86 0.22 145 / 0)",
-                  "0 0 28px -12px oklch(0.86 0.22 145 / 0.22)",
-                  "0 0 0 0 oklch(0.86 0.22 145 / 0)",
-                ],
-              }
-            : {}
-        }
-        transition={{
-          duration: 2.6,
-          repeat: event.liveNow ? Infinity : 0,
-          ease: "easeInOut",
-        }}
-        className="rounded-[inherit]"
-      >
+      <motion.div className="rounded-[inherit]">
         <Card
           className={cn(
-            "relative gap-0 overflow-hidden border border-white/[0.08] bg-pu-surface-deep/55 py-0 shadow-[0_12px_40px_-28px_rgba(0,0,0,0.9)] ring-0 transition-[transform,box-shadow,border-color] duration-300 hover:border-white/[0.14] hover:shadow-[0_18px_44px_-26px_rgba(0,0,0,0.88)] active:scale-[0.998]",
+            "relative gap-0 overflow-hidden border border-white/[0.1] bg-pu-surface-deep/55 py-0 shadow-[0_14px_42px_-28px_rgba(0,0,0,0.92)] ring-0 transition-[transform,box-shadow,border-color] duration-300 hover:border-white/[0.16] hover:shadow-[0_20px_44px_-24px_rgba(0,0,0,0.9)] active:scale-[0.998]",
             isCarousel ? "rounded-2xl" : "rounded-3xl",
-            event.liveNow && "border-pu-live/25"
+            event.liveNow && "border-white/[0.22]"
           )}
         >
-          {event.liveNow && (
-            <motion.div
-              className="pointer-events-none absolute inset-0 z-[5] rounded-[inherit] ring-1 ring-inset ring-pu-live/25"
-              animate={{ opacity: [0.25, 0.5, 0.25] }}
-              transition={{
-                duration: 2.2,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              aria-hidden
-            />
-          )}
-
           <Link
             href={`/event/${event.id}`}
             className={cn(
@@ -172,15 +141,14 @@ export function EventCard({
                 />
               </motion.div>
 
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" />
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_70%_at_50%_0%,rgba(217,70,239,0.12),transparent_52%)]" />
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_80%_100%,rgba(251,191,36,0.08),transparent_55%)]" />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-black/15" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(255,255,255,0.12),transparent_56%)] opacity-20 mix-blend-soft-light" />
 
               {event.liveNow && (
-                <div className="pointer-events-none absolute left-1/2 top-3 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-pu-live/40 bg-pu-live-dim/85 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pu-live">
+                <div className="pointer-events-none absolute left-1/2 top-3 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/65 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
                   <span className="relative flex size-2">
-                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-pu-live opacity-70" />
-                    <span className="relative inline-flex size-2 rounded-full bg-pu-live" />
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-red-500 opacity-70" />
+                    <span className="relative inline-flex size-2 rounded-full bg-red-500" />
                   </span>
                   Live
                 </div>
@@ -198,7 +166,7 @@ export function EventCard({
                       #{hotRank}
                     </span>
                   )}
-                  <Badge className="pointer-events-none border border-white/12 bg-black/70 text-[11px] font-bold uppercase tracking-wide text-white/95 backdrop-blur-sm">
+                  <Badge className="pointer-events-none border-0 bg-black/55 text-[11px] font-semibold uppercase tracking-wide text-white/95 backdrop-blur-sm">
                     {event.categoryLabel}
                   </Badge>
                 </div>
@@ -213,17 +181,9 @@ export function EventCard({
 
               <div className="absolute bottom-0 left-0 right-0 z-10 space-y-2.5 px-3 pb-3 pt-12 sm:space-y-3 sm:px-4 sm:pb-4">
                 <div className="flex flex-wrap gap-1.5">
-                  {event.urgencyLabels.slice(0, 2).map((label, i) => (
-                    <UrgencyChip key={label} emphasize={i === 0}>
-                      <span className="inline-flex items-center gap-1">
-                        {i === 0 ? (
-                          <Sparkles
-                            className="size-3 shrink-0 text-amber-200"
-                            aria-hidden
-                          />
-                        ) : null}
-                        {label}
-                      </span>
+                  {event.urgencyLabels.slice(0, 2).map((label) => (
+                    <UrgencyChip key={label} emphasize={false} className="border-0 bg-black/55 font-semibold tracking-[0.08em]">
+                      <span className="inline-flex items-center gap-1">{label}</span>
                     </UrgencyChip>
                   ))}
                 </div>
@@ -260,7 +220,7 @@ export function EventCard({
 
           <div
             className={cn(
-              "relative grid gap-3.5 rounded-b-3xl bg-gradient-to-br from-pu-surface via-pu-surface-deep to-black p-3.5 sm:gap-4 sm:p-4",
+              "relative grid gap-3 rounded-b-3xl bg-gradient-to-b from-zinc-900/92 to-black p-3.5 sm:gap-3.5 sm:p-4",
               "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/[0.08] before:to-transparent",
               isCarousel && "rounded-b-2xl"
             )}
@@ -280,7 +240,7 @@ export function EventCard({
                 aria-label={saved ? "Saved, tap to remove" : "Save event"}
                 title={saved ? "Remove from saved" : "Save event"}
                 className={cn(
-                  "shrink-0 border-white/15 font-bold transition-colors",
+                  "shrink-0 border-white/10 font-semibold transition-colors",
                   saved &&
                     "border-pu-magenta/40 bg-pu-magenta-dim/28 text-white hover:bg-pu-magenta-dim/38",
                   isCarousel && "min-w-0 px-2"
@@ -323,7 +283,7 @@ export function EventCard({
                       : "Going"
                 }
                 className={cn(
-                  "shrink-0 border-white/15 font-bold transition-colors",
+                  "shrink-0 border-white/10 font-semibold transition-colors",
                   rsvped &&
                     "border-pu-live/40 bg-pu-live-dim/32 text-pu-live hover:bg-pu-live-dim/45",
                   isCarousel && "min-w-0 px-2"
@@ -355,8 +315,8 @@ export function EventCard({
               <span className="text-[13px] font-semibold tabular-nums text-white/55">
                 {formatEventTimeRange(event.startsAt, event.endsAt)}
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/12 bg-black/40 px-2.5 py-1 text-xs font-bold text-white">
-                <Ticket className="size-3.5 text-amber-400" aria-hidden />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.08] px-2.5 py-1 text-xs font-semibold text-white">
+                <Ticket className="size-3.5 text-white/85" aria-hidden />
                 {coverLabel}
                 {event.entryType === "cover" && event.coverCents !== null && (
                   <span className="font-semibold text-muted-foreground">
@@ -366,18 +326,15 @@ export function EventCard({
               </span>
             </div>
 
-            <p className="text-[13px] font-semibold leading-snug text-white/82 sm:text-sm">
-              <span className="bg-gradient-to-r from-pu-magenta to-pu-amber bg-clip-text font-extrabold text-transparent">
-                Vibe
-              </span>{" "}
-              <span className="text-white/90">{event.vibeMusic}</span>
+            <p className="text-[13px] font-medium leading-snug text-white/86 sm:text-sm">
+              <span className="text-white/60">Sound:</span> <span className="text-white/92">{event.vibeMusic}</span>
             </p>
 
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-md border border-white/12 bg-black/35 px-2 py-1 text-[11px] font-semibold text-white/85">
+            <div className="flex flex-wrap gap-1.5">
+              <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium text-white/82">
                 Stag {event.stagRule}
               </span>
-              <span className="rounded-md border border-white/12 bg-black/35 px-2 py-1 text-[11px] font-semibold text-white/85">
+              <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium text-white/82">
                 {event.ageRestriction}
               </span>
             </div>
