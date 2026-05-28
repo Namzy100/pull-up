@@ -48,29 +48,79 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
+  const baseLog = {
+    event: "middleware_decision",
+    path: pathname,
+    hasSession: Boolean(user),
+    authUserId: user?.id ?? null,
+  };
   if (isProtectedPath(pathname) && !user) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("next", pathname);
+    console.info(
+      "[auth-routing]",
+      JSON.stringify({ ...baseLog, destination: redirectUrl.pathname, reason: "protected_no_session" })
+    );
     return NextResponse.redirect(redirectUrl);
   }
 
   if (user && isProtectedPath(pathname)) {
-    const { data: profileData } = await supabase
+    const { data: profileData, error: profileError } = await supabase
       .from("profiles")
       .select("role, onboarding_complete")
       .eq("id", user.id)
       .maybeSingle();
     const profile = profileData as { role: string; onboarding_complete: boolean } | null;
+    if (profileError) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/login";
+      redirectUrl.search = "";
+      redirectUrl.searchParams.set("profile_read_failed", "1");
+      redirectUrl.searchParams.set("next", pathname);
+      console.info(
+        "[auth-routing]",
+        JSON.stringify({
+          ...baseLog,
+          profileExists: Boolean(profile),
+          onboarding_complete: null,
+          destination: redirectUrl.pathname,
+          reason: "protected_profile_read_failed",
+          code: profileError.code ?? null,
+        })
+      );
+      return NextResponse.redirect(redirectUrl);
+    }
     if (profile && profile.onboarding_complete === false && pathname !== "/onboarding") {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/onboarding";
+      console.info(
+        "[auth-routing]",
+        JSON.stringify({
+          ...baseLog,
+          profileExists: true,
+          onboarding_complete: false,
+          destination: redirectUrl.pathname,
+          reason: "protected_incomplete_onboarding",
+        })
+      );
       return NextResponse.redirect(redirectUrl);
     }
     const requiredRoles = requiredRolesForPath(pathname);
     if (requiredRoles && profile && !requiredRoles.includes(profile.role)) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/profile";
+      console.info(
+        "[auth-routing]",
+        JSON.stringify({
+          ...baseLog,
+          profileExists: true,
+          onboarding_complete: profile.onboarding_complete,
+          destination: redirectUrl.pathname,
+          reason: "role_block",
+          role: profile.role,
+        })
+      );
       return NextResponse.redirect(redirectUrl);
     }
   }
@@ -84,8 +134,28 @@ export async function updateSession(request: NextRequest) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = prof?.role === "admin" ? "/admin" : "/";
     redirectUrl.search = "";
+    console.info(
+      "[auth-routing]",
+      JSON.stringify({
+        ...baseLog,
+        profileExists: Boolean(prof),
+        onboarding_complete: null,
+        destination: redirectUrl.pathname,
+        reason: "auth_path_authed",
+      })
+    );
     return NextResponse.redirect(redirectUrl);
   }
 
+  console.info(
+    "[auth-routing]",
+    JSON.stringify({
+      ...baseLog,
+      profileExists: null,
+      onboarding_complete: null,
+      destination: pathname,
+      reason: "pass_through",
+    })
+  );
   return response;
 }

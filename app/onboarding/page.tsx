@@ -106,7 +106,6 @@ export default function OnboardingPage() {
   const [bootFailed, setBootFailed] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
   const [bootRetryBusy, setBootRetryBusy] = useState(false);
-  const [needsSignIn, setNeedsSignIn] = useState(false);
   const [bootRedirect, setBootRedirect] = useState<{ href: string; label: string } | null>(null);
   const [bootFailureKind, setBootFailureKind] = useState<"read" | "ensure" | "generic">("generic");
 
@@ -283,13 +282,23 @@ export default function OnboardingPage() {
     async (trigger: "mount" | "retry") => {
       setBootFailed(false);
       setBootError(null);
-      setNeedsSignIn(false);
       setBootRedirect(null);
       setBootFailureKind("generic");
       setBootRetryBusy(true);
       setBootLoading(true);
 
       logAuthHydration("onboarding_boot_start", { trigger });
+      logAuthHydration("boot_start", {
+        trigger: `onboarding:${trigger}`,
+        path: typeof window !== "undefined" ? window.location.pathname : null,
+      });
+      const s = useAppStore.getState();
+      logAuthHydration("store_auth_state_before_boot", {
+        trigger: `onboarding:${trigger}`,
+        authReady: s.authReady,
+        authUserId: s.authUserId ?? null,
+        path: typeof window !== "undefined" ? window.location.pathname : null,
+      });
 
       try {
         const outcome = await withTimeout(
@@ -307,9 +316,29 @@ export default function OnboardingPage() {
           case "no_env":
             break;
           case "no_user":
-            setNeedsSignIn(true);
+            logAuthHydration("onboarding_guard_result", {
+              path: typeof window !== "undefined" ? window.location.pathname : null,
+              hasSession: false,
+              authUserId: null,
+              authReady: useAppStore.getState().authReady,
+              profileExists: false,
+              onboarding_complete: null,
+              destination: "/login?next=/onboarding",
+              result: "redirect_login_no_user",
+            });
+            router.replace(LOGIN_NEXT);
             break;
           case "ready":
+            logAuthHydration("onboarding_guard_result", {
+              path: typeof window !== "undefined" ? window.location.pathname : null,
+              hasSession: true,
+              authUserId: useAppStore.getState().authUserId ?? null,
+              authReady: useAppStore.getState().authReady,
+              profileExists: true,
+              onboarding_complete: false,
+              destination: "/onboarding",
+              result: "allow_onboarding_form",
+            });
             break;
           case "profile_read_failed":
             setBootFailed(true);
@@ -323,6 +352,16 @@ export default function OnboardingPage() {
             break;
           case "redirect":
             setBootRedirect({ href: outcome.href, label: outcome.label });
+            logAuthHydration("onboarding_guard_result", {
+              path: typeof window !== "undefined" ? window.location.pathname : null,
+              hasSession: true,
+              authUserId: useAppStore.getState().authUserId ?? null,
+              authReady: useAppStore.getState().authReady,
+              profileExists: true,
+              onboarding_complete: outcome.reason === "onboarding_complete",
+              destination: outcome.href,
+              result: outcome.reason,
+            });
             router.replace(outcome.href);
             break;
         }
@@ -385,7 +424,6 @@ export default function OnboardingPage() {
     await logout();
     setBootRetryBusy(false);
     setBootFailed(false);
-    setNeedsSignIn(false);
     router.replace(LOGIN_NEXT);
     router.refresh();
   }
@@ -513,23 +551,6 @@ export default function OnboardingPage() {
     return (
       <div className="pu-screen flex min-h-dvh items-center justify-center px-4 pb-8">
         <p className="pu-meta">Loading your profile…</p>
-      </div>
-    );
-  }
-
-  if (needsSignIn) {
-    return (
-      <div className="pu-screen flex min-h-dvh flex-col items-center justify-center gap-6 px-4 pb-8">
-        <div className="w-full max-w-sm space-y-3 text-center">
-          <h1 className="font-heading text-lg font-bold text-white">Please sign in to continue</h1>
-          <p className="pu-meta text-[0.8125rem] leading-relaxed">
-            Student onboarding needs an active session. Sign in, then we&apos;ll pick up where you
-            left off.
-          </p>
-          <Button asChild className="h-11 w-full rounded-xl font-bold">
-            <Link href={LOGIN_NEXT}>Go to login</Link>
-          </Button>
-        </div>
       </div>
     );
   }

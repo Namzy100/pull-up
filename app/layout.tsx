@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Syne } from "next/font/google";
 
 import { SessionSync } from "@/components/auth/session-sync";
+import { DevAuthDebugPanel } from "@/components/auth/dev-auth-debug-panel";
 import { BottomNav } from "@/components/layout/bottom-nav";
 
 import "./globals.css";
@@ -62,6 +63,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-dvh flex-col bg-transparent pb-[calc(5.75rem+env(safe-area-inset-bottom))] text-foreground">
         <SessionSync />
+        <DevAuthDebugPanel />
         {children}
         <BottomNav />
       </body>

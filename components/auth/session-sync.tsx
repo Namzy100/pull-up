@@ -52,6 +52,14 @@ export function SessionSync() {
 
   const runSync = useCallback(
     async (trigger: string) => {
+      const before = useAppStore.getState();
+      logAuthHydration("boot_start", { trigger, path: typeof window !== "undefined" ? window.location.pathname : null });
+      logAuthHydration("store_auth_state_before_boot", {
+        trigger,
+        authReady: before.authReady,
+        authUserId: before.authUserId ?? null,
+        path: typeof window !== "undefined" ? window.location.pathname : null,
+      });
       if (syncInFlightRef.current) {
         logAuthHydration("session_restore_skipped", { trigger, reason: "in_flight" });
         return;
@@ -91,6 +99,14 @@ export function SessionSync() {
         if (!mountedRef.current) return;
 
         logAuthHydration("profile_fetch_end", { trigger, hasUser: Boolean(data) });
+        logAuthHydration("supabase_session_result", {
+          trigger,
+          path: typeof window !== "undefined" ? window.location.pathname : null,
+          hasSession: Boolean(data),
+          authUserId: data?.userId ?? null,
+          profileExists: Boolean(data?.profile),
+          onboarding_complete: data?.profile?.onboardingComplete ?? null,
+        });
 
         const demo =
           typeof window !== "undefined" &&
@@ -105,6 +121,16 @@ export function SessionSync() {
           logAuthHydration("session_restore_success", { trigger, mode: "logged_out" });
           logAuthHydration("hydration_complete", { trigger, mode: "logged_out" });
           logAuthHydration("auth_ready_set", { reason: "no_session", demo });
+          logAuthHydration("route_decision", {
+            trigger,
+            path: typeof window !== "undefined" ? window.location.pathname : null,
+            hasSession: false,
+            authUserId: null,
+            authReady: true,
+            profileExists: false,
+            onboarding_complete: null,
+            destination: "/login",
+          });
           return;
         }
 
@@ -115,6 +141,16 @@ export function SessionSync() {
         logAuthHydration("session_restore_success", { trigger, mode: "hydrated" });
         logAuthHydration("hydration_complete", { trigger, userId: data.userId });
         logAuthHydration("auth_ready_set", { reason: "hydrated", demo: false });
+        logAuthHydration("route_decision", {
+          trigger,
+          path: typeof window !== "undefined" ? window.location.pathname : null,
+          hasSession: true,
+          authUserId: data.userId,
+          authReady: true,
+          profileExists: true,
+          onboarding_complete: data.profile.onboardingComplete,
+          destination: data.profile.onboardingComplete ? "/" : "/onboarding",
+        });
       } catch (err: unknown) {
         const message = hydrationErrorMessage(err);
         console.warn("[auth-hydration]", {
