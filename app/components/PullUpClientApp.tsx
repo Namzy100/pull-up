@@ -30,7 +30,35 @@ type ApiConfig = {
   supabaseAnonKey: string | null;
 };
 
+type SupabaseProfile = {
+  account_type: AccountType;
+  can_host_unofficial: boolean;
+  display_name: string;
+  email: string;
+};
+
 const STORAGE_KEY = "pull-up-session";
+const ARRIVAL_WINDOW = "10:30-10:45";
+
+type LiveEvent = {
+  id: string;
+  title: string;
+  cover: string;
+  age_rule: string;
+  starts_at: string;
+  status: string;
+  event_type: string;
+  venues?: { name?: string; kind?: string } | null;
+};
+
+type AttendanceRow = {
+  id: string;
+  event_id: string;
+  status: string;
+  visibility: string;
+  updated_at?: string;
+  events?: LiveEvent | null;
+};
 
 export default function PullUpClientApp({ requiredRole }: { requiredRole?: AccountType }) {
   const [auth, setAuth] = useState<AuthState | null>(null);
@@ -39,7 +67,6 @@ export default function PullUpClientApp({ requiredRole }: { requiredRole?: Accou
   const [accountType, setAccountType] = useState<AccountType>("student");
   const [message, setMessage] = useState("Preview tonight without signing in. Join a plan when you are ready.");
   const [loading, setLoading] = useState(false);
-  const [planState, setPlanState] = useState("No plan joined yet.");
 
   useEffect(() => {
     window.setTimeout(() => {
@@ -86,47 +113,20 @@ export default function PullUpClientApp({ requiredRole }: { requiredRole?: Accou
         },
         body: JSON.stringify({ email, password }),
       });
-      const result = (await response.json()) as { access_token?: string; error_description?: string; msg?: string };
+      const result = (await response.json()) as {
+        access_token?: string;
+        error_description?: string;
+        msg?: string;
+        user?: { email?: string };
+      };
       if (!response.ok || !result.access_token) {
+        if (mode === "signup" && response.ok) {
+          throw new Error("Check your email to confirm this account, then sign in.");
+        }
         throw new Error(result.error_description ?? result.msg ?? "Supabase rejected this sign-in.");
       }
 
-      let profileResponse = await fetch("/api/supabase/profile", {
-        headers: { authorization: `Bearer ${result.access_token}` },
-      });
-      if (mode === "signup" && profileResponse.ok) {
-        const existing = (await profileResponse.clone().json()) as { profiles?: unknown[] };
-        if (!existing.profiles?.length) {
-          profileResponse = await fetch("/api/supabase/profile", {
-            method: "POST",
-            headers: {
-              authorization: `Bearer ${result.access_token}`,
-              "content-type": "application/json",
-            },
-            body: JSON.stringify({
-              displayName: email.split("@")[0].replace(/[._-]/g, " "),
-              campusId: "uiuc",
-              classYear: "2027",
-            }),
-          });
-        }
-      }
-      if (!profileResponse.ok) {
-        throw new Error("Signed in, but no Pull Up profile exists for this account yet.");
-      }
-      const profileResult = (await profileResponse.json()) as { profile?: {
-        account_type: AccountType;
-        can_host_unofficial: boolean;
-        display_name: string;
-        email: string;
-      }; profiles?: Array<{
-        account_type: AccountType;
-        can_host_unofficial: boolean;
-        display_name: string;
-        email: string;
-      }> };
-      const profile = profileResult.profile ?? profileResult.profiles?.[0];
-      if (!profile) throw new Error("Signed in, but no Pull Up profile exists for this account yet.");
+      const profile = await ensureProfile(result.access_token, mode, result.user?.email ?? email);
       setAuth({
         accessToken: result.access_token,
         accountType: profile.account_type,
@@ -141,6 +141,44 @@ export default function PullUpClientApp({ requiredRole }: { requiredRole?: Accou
     } finally {
       setLoading(false);
     }
+  }
+
+  async function ensureProfile(accessToken: string, mode: "signin" | "signup", profileEmail: string): Promise<SupabaseProfile> {
+    const profileResponse = await fetch("/api/supabase/profile", {
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    if (!profileResponse.ok) {
+      throw new Error("Signed in, but Pull Up could not read your profile.");
+    }
+
+    const profileResult = (await profileResponse.json()) as { profiles?: SupabaseProfile[] };
+    const existingProfile = profileResult.profiles?.[0];
+    if (existingProfile) return existingProfile;
+    if (mode !== "signup") {
+      throw new Error("Signed in, but no Pull Up profile exists for this account yet.");
+    }
+
+    const createdResponse = await fetch("/api/supabase/profile", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        displayName: displayNameFromEmail(profileEmail),
+        campusId: "uiuc",
+        canHostUnofficial: false,
+      }),
+    });
+    if (!createdResponse.ok) {
+      throw new Error("Account created, but Pull Up could not create your profile.");
+    }
+
+    const createdResult = (await createdResponse.json()) as { profile?: SupabaseProfile };
+    if (!createdResult.profile) {
+      throw new Error("Account created, but Pull Up did not receive a profile.");
+    }
+    return createdResult.profile;
   }
 
   function startDemo(role: AccountType) {
@@ -166,7 +204,7 @@ export default function PullUpClientApp({ requiredRole }: { requiredRole?: Accou
       setMessage(`${action} for ${venueName} needs sign-in so friend context stays private.`);
       return;
     }
-    setPlanState(`${action} saved for ${venueName}. Demo only until Supabase is configured.`);
+    setMessage(`${action} is ready for ${venueName}. Open the student app to save it to your account.`);
   }
 
   if (requiredRole && !auth) {
@@ -226,11 +264,35 @@ export default function PullUpClientApp({ requiredRole }: { requiredRole?: Accou
           onVenueAction={requireAction}
         />
       )}
-      {auth && activeRole === "student" && <StudentApp auth={auth} planState={planState} />}
+      {auth && activeRole === "student" && <StudentApp auth={auth} onVenueAction={requireAction} />}
       {auth && activeRole === "host" && <HostApp auth={auth} />}
       {auth && activeRole === "admin" && <AdminApp />}
     </main>
   );
+}
+
+function displayNameFromEmail(email: string) {
+  const localPart = email.split("@")[0] ?? "Student";
+  return localPart
+    .split(/[._-]/)
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ") || "Student";
+}
+
+async function apiRequest<T>(accessToken: string, path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(path, {
+    ...init,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      "content-type": "application/json",
+      ...(init.headers ?? {}),
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`API request failed with status ${response.status}`);
+  }
+  return (await response.json()) as T;
 }
 
 function PublicTonight({
@@ -408,214 +470,209 @@ function AuthCard(props: {
 
 function StudentApp({
   auth,
-  planState,
+  onVenueAction,
 }: {
   auth: AuthState;
-  planState: string;
+  onVenueAction: (action: string, venueName: string) => void;
 }) {
-  type StudentTab = "tonight" | "crew" | "plans" | "profile";
-  type Flow = "feed" | "venue" | "create" | "plan" | "arrive" | "report" | "complete";
-  const [tab, setTab] = useState<StudentTab>("tonight");
-  const [flow, setFlow] = useState<Flow>("feed");
-  const [selectedVenue, setSelectedVenue] = useState<Venue>(venues[0]);
-  const [arrival, setArrival] = useState("10:30–10:45");
-  const [toast, setToast] = useState("");
-  const [friends, setFriends] = useState(["Maya", "Dev", "Arjun"]);
-  const [lineReport, setLineReport] = useState("Moderate");
+  const [events, setEvents] = useState<LiveEvent[]>([]);
+  const [history, setHistory] = useState<AttendanceRow[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [studentStatus, setStudentStatus] = useState("Loading your saved Pull Up plans...");
+  const [busyAction, setBusyAction] = useState<string | null>(null);
 
-  function notify(value: string) {
-    setToast(value);
-    window.setTimeout(() => setToast(""), 2600);
+  const selectedEvent = events.find((event) => event.id === selectedEventId) ?? events[0] ?? null;
+  const selectedVenueName = selectedEvent?.title ?? "tonight";
+  const persistedEnabled = !auth.isDemo && Boolean(selectedEvent);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadStudentData() {
+      if (auth.isDemo) {
+        setStudentStatus("Demo account: visible actions are labeled demo-only until you sign in with Supabase.");
+        return;
+      }
+      try {
+        const [eventsResult, historyResult] = await Promise.all([
+          apiRequest<{ events: LiveEvent[] }>(auth.accessToken, "/api/supabase/events"),
+          apiRequest<{ attendances: AttendanceRow[] }>(auth.accessToken, "/api/supabase/attendance"),
+        ]);
+        if (cancelled) return;
+        const liveEvents = eventsResult.events.filter((event) => ["approved", "live", "ended"].includes(event.status));
+        setEvents(liveEvents);
+        setHistory(historyResult.attendances);
+        setSelectedEventId(liveEvents[0]?.id ?? null);
+        setStudentStatus(liveEvents.length > 0 ? "Live Supabase events loaded." : "No live events yet. Public preview cards are demo-only until hosts/admins publish events.");
+      } catch {
+        if (!cancelled) setStudentStatus("Could not load your persisted plans. Try signing out and back in.");
+      }
+    }
+    loadStudentData();
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.accessToken, auth.isDemo]);
+
+  async function refreshHistory() {
+    if (auth.isDemo) return;
+    const result = await apiRequest<{ attendances: AttendanceRow[] }>(auth.accessToken, "/api/supabase/attendance");
+    setHistory(result.attendances);
   }
 
-  function openVenue(venue: Venue) {
-    setSelectedVenue(venue);
-    setFlow("venue");
+  async function runStudentAction(action: string, status: "interested" | "going" | "arrived", eventOverride?: LiveEvent) {
+    const targetEvent = eventOverride ?? selectedEvent;
+    if (auth.isDemo || !targetEvent) {
+      onVenueAction(action, selectedVenueName);
+      return;
+    }
+    setBusyAction(action);
+    setStudentStatus(`${action}...`);
+    try {
+      await apiRequest(auth.accessToken, "/api/supabase/attendance", {
+        method: "POST",
+        body: JSON.stringify({
+          eventId: targetEvent.id,
+          status,
+          visibility: "friends",
+          arrivalWindow: ARRIVAL_WINDOW,
+        }),
+      });
+      await refreshHistory();
+      setStudentStatus(`${action} persisted for ${targetEvent.title}.`);
+    } catch {
+      setStudentStatus(`${action} failed. Your session may be expired or this event may no longer be available.`);
+    } finally {
+      setBusyAction(null);
+    }
   }
 
-  function openTab(next: StudentTab) {
-    setTab(next);
-    setFlow(next === "tonight" ? "feed" : next === "plans" ? "plan" : "feed");
+  async function reportConditions() {
+    if (auth.isDemo || !selectedEvent) {
+      onVenueAction("Condition report", selectedVenueName);
+      return;
+    }
+    setBusyAction("Report conditions");
+    setStudentStatus("Sending condition report...");
+    try {
+      await apiRequest(auth.accessToken, "/api/supabase/conditions", {
+        method: "POST",
+        body: JSON.stringify({
+          eventId: selectedEvent.id,
+          lineState: "moving",
+          cover: selectedEvent.cover,
+          note: "Line moving steadily; cover matched listing.",
+        }),
+      });
+      setStudentStatus("Condition report persisted without sharing a live location trail.");
+    } catch {
+      setStudentStatus("Condition report failed. Try again after refreshing your session.");
+    } finally {
+      setBusyAction(null);
+    }
   }
 
   return (
-    <section className="prototype-stage student-app">
-      <div className="prototype-notes">
-        <p className="eyebrow">Interactive prototype</p>
-        <h1>Friday night, start to finish.</h1>
-        <p>Every primary action works in demo mode. The same states map to the Supabase plan, member, attendance, and report architecture.</p>
-        <div className="prototype-progress">
-          {["Discover", "Coordinate", "Commit", "Arrive", "Verify"].map((item, index) => (
-            <span className={["feed", "venue", "create", "plan", "arrive", "report", "complete"].indexOf(flow) >= index ? "done" : ""} key={item}>
-              <b>{index + 1}</b>{item}
-            </span>
+    <section className="mobile-product student-app">
+      <PhoneFrame audience="Student" title="Tonight" tabs={["Tonight", "Crew", "Plans"]}>
+        <TonightFeed
+          events={events}
+          persistedEnabled={persistedEnabled}
+          selectedEventId={selectedEventId}
+          onSelectEvent={setSelectedEventId}
+          onVenueAction={onVenueAction}
+          onPersistAction={(eventId) => {
+            const targetEvent = events.find((event) => event.id === eventId);
+            setSelectedEventId(eventId);
+            void runStudentAction("Join plan", "interested", targetEvent);
+          }}
+        />
+      </PhoneFrame>
+      <PhoneFrame audience="Student" title="Crew plan" tabs={["Plan", "Invite", "Arrive"]}>
+        <div className="plan-hero">
+          <span>{selectedVenueName}</span>
+          <h4>{selectedEvent ? `Commit ${ARRIVAL_WINDOW}` : "No persisted event selected"}</h4>
+          <p>{selectedEvent ? "Crew intent is saved as an attendance plan. Friends see intent; hosts only see aggregate demand." : "Live Supabase events will appear here after hosts/admins publish them."}</p>
+        </div>
+        <div className="crew-list">
+          {[
+            selectedEvent ? "Invite link ready for your crew" : "Invite unavailable until an event is selected",
+            selectedEvent ? `Arrival window: ${ARRIVAL_WINDOW}` : "Arrival window not set",
+            history[0] ? `Last persisted status: ${history[0].status}` : "No persisted plan history yet",
+            persistedEnabled ? "Persistence: Supabase on" : "Persistence: demo-only preview",
+          ].map((item) => (
+            <span key={item}>{item}</span>
           ))}
         </div>
-      </div>
-      <article className="app-phone">
-        <div className="phone-notch" />
-        <header className="native-header">
-          <div>
-            <p>{tab === "tonight" ? "UIUC · Friday" : "Pull Up"}</p>
-            <h2>{flow === "feed" ? "Tonight" : flow === "venue" ? selectedVenue.name : flow === "create" ? "Start a plan" : flow === "arrive" ? "You made it" : flow === "report" ? "What’s it like?" : flow === "complete" ? "Signal sent" : tab === "crew" ? "Your crew" : tab === "profile" ? "You" : "Crew plan"}</h2>
-          </div>
-          {flow !== "feed" && tab === "tonight" && <button className="icon-button" onClick={() => setFlow("feed")} aria-label="Back">←</button>}
-          {flow === "feed" && <button className="avatar-mini" onClick={() => openTab("profile")}>{auth.displayName.split(" ").map((p) => p[0]).join("").slice(0, 2)}</button>}
-        </header>
-
-        <div className="native-content">
-          {tab === "tonight" && flow === "feed" && (
-            <>
-              <div className="tonight-pulse">
-                <span><i /> Campus is warming up</span>
-                <b>Best movement: 10:15–11:00</b>
-              </div>
-              <div className="filter-row"><button className="selected">For you</button><button>Near me</button><button>No cover</button><button>21+</button></div>
-              <div className="native-feed">
-                {venues.map((venue) => (
-                  <button className="native-venue" key={venue.name} onClick={() => openVenue(venue)}>
-                    <div className="native-venue-top">
-                      <span className={`pulse-dot momentum-${venue.momentum}`} />
-                      <div><strong>{venue.name}</strong><small>{venue.walkTime} · {venue.age}</small></div>
-                      <em className={`state momentum-${venue.momentum}`}>{momentumCopy(venue.momentum)}</em>
-                    </div>
-                    <h3>{venue.arrivalWindow}</h3>
-                    <p>{venue.explanation}</p>
-                    <div className="social-proof"><b>{venue.crewIntent}</b><span>{venue.updated}</span></div>
-                    <div className="quick-facts"><span>{venue.cover}</span><span>{venue.line}</span><span>{confidenceCopy(venue.confidence)}</span></div>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {tab === "tonight" && flow === "venue" && (
-            <div className="detail-flow">
-              <div className={`venue-glow momentum-${selectedVenue.momentum}`}>
-                <span className={`state momentum-${selectedVenue.momentum}`}>{momentumCopy(selectedVenue.momentum)}</span>
-                <h3>{selectedVenue.arrivalWindow}</h3>
-                <p>{selectedVenue.explanation}</p>
-              </div>
-              <div className="friend-stack"><span>SP</span><span>MK</span><span>DR</span><span>+1</span><b>{selectedVenue.crewIntent}</b></div>
-              <div className="detail-grid">
-                <span><small>Walk</small><b>{selectedVenue.walkTime}</b></span>
-                <span><small>Cover</small><b>{selectedVenue.cover}</b></span>
-                <span><small>Line</small><b>{selectedVenue.line}</b></span>
-                <span><small>Entry</small><b>{selectedVenue.age}</b></span>
-              </div>
-              <section className="why-card"><strong>Why Pull Up thinks this</strong>{selectedVenue.evidence.map((item) => <span key={item}>✓ {item}</span>)}<small>{confidenceCopy(selectedVenue.confidence)} · {selectedVenue.updated}</small></section>
-              <button className="full-button" onClick={() => setFlow("create")}>{selectedVenue.momentum === "no-reliable-call" ? "Watch for a cleaner call" : "Make this the move"}</button>
-            </div>
-          )}
-
-          {tab === "tonight" && flow === "create" && (
-            <div className="detail-flow">
-              <div className="plan-summary"><span>{selectedVenue.name}</span><strong>{selectedVenue.arrivalWindow}</strong><small>{selectedVenue.cover} · {selectedVenue.line}</small></div>
-              <label className="choice-label">When should the crew arrive?</label>
-              <div className="arrival-options">{["10:15–10:30", "10:30–10:45", "10:45–11:00"].map((time) => <button className={arrival === time ? "selected" : ""} onClick={() => setArrival(time)} key={time}>{time}</button>)}</div>
-              <label className="choice-label">Invite your crew</label>
-              <div className="invite-list">{["Maya", "Dev", "Arjun", "Priya"].map((friend) => <button className={friends.includes(friend) ? "selected" : ""} onClick={() => setFriends((current) => current.includes(friend) ? current.filter((name) => name !== friend) : [...current, friend])} key={friend}><span>{friend[0]}</span><b>{friend}</b><i>{friends.includes(friend) ? "✓" : "+"}</i></button>)}</div>
-              <div className="privacy-note">Only invited friends see names and intent. Venues receive aggregate demand, never your crew list or live location.</div>
-              <button className="full-button" onClick={() => { setTab("plans"); setFlow("plan"); notify("Plan created — 3 friends invited"); }}>Create plan</button>
-            </div>
-          )}
-
-          {tab === "plans" && flow === "plan" && (
-            <div className="detail-flow">
-              <div className="plan-hero live-plan"><span>Tonight · {selectedVenue.name}</span><h4>{arrival}</h4><p>Leave in 42 minutes to hit the best window.</p></div>
-              <div className="crew-list">
-                <span><b>Sarah</b><em>Going</em></span>
-                <span><b>Maya</b><em>Going · 10:30</em></span>
-                <span><b>Dev</b><em>Needs 10 min</em></span>
-                <span><b>Arjun</b><em>Waiting on cover</em></span>
-              </div>
-              <div className="plan-actions"><button onClick={() => { navigator.clipboard?.writeText("https://pullup.app/p/demo"); notify("Private invite link copied"); }}>Invite more</button><button onClick={() => notify("Crew nudged — no location shared")}>Nudge crew</button></div>
-              <button className="full-button" onClick={() => setFlow("arrive")}>I’m here</button>
-              <button className="text-button" onClick={() => { setTab("tonight"); setFlow("feed"); }}>Change the move</button>
-              <p className="status-line">{planState}</p>
-            </div>
-          )}
-
-          {tab === "plans" && flow === "arrive" && (
-            <div className="arrival-screen">
-              <div className="arrival-orbit"><span>✓</span></div>
-              <h3>Checked in at {selectedVenue.name}</h3>
-              <p>Your arrival is private. Pull Up only adds it to the verified aggregate.</p>
-              <button className="full-button" onClick={() => setFlow("report")}>Share a 10-second update</button>
-              <button className="text-button" onClick={() => setFlow("complete")}>Not now</button>
-            </div>
-          )}
-
-          {tab === "plans" && flow === "report" && (
-            <div className="detail-flow">
-              <p className="report-question">How’s the line?</p>
-              <div className="report-options">{["None", "Short", "Moderate", "Long"].map((item) => <button className={lineReport === item ? "selected" : ""} onClick={() => setLineReport(item)} key={item}>{item}</button>)}</div>
-              <p className="report-question">How does it feel inside?</p>
-              <div className="vibe-meter"><button>Quiet</button><button className="selected">Filling up</button><button>Busy</button><button>Packed</button></div>
-              <label className="form-field">Cover right now<input defaultValue="$5" /></label>
-              <button className="full-button" onClick={() => setFlow("complete")}>Send verified update</button>
-            </div>
-          )}
-
-          {tab === "plans" && flow === "complete" && (
-            <div className="arrival-screen complete-screen">
-              <div className="arrival-orbit"><span>↑</span></div>
-              <h3>You made tonight clearer.</h3>
-              <p>Your {lineReport.toLowerCase()} line report joins other evidence for one hour. It never changes momentum by itself.</p>
-              <div className="impact-card"><small>Signal confidence</small><strong>High</strong><span>42 → 43 verified arrivals</span></div>
-              <button className="full-button" onClick={() => { setTab("tonight"); setFlow("feed"); }}>Back to Tonight</button>
-            </div>
-          )}
-
-          {tab === "crew" && (
-            <div className="detail-flow">
-              <div className="crew-identity"><div className="avatar">QN</div><div><strong>Quad Night</strong><small>5 friends · Friday regulars</small></div></div>
-              <div className="crew-list">{["Sarah · You", "Maya · Going out", "Dev · Free after 10", "Arjun · Watching Joe’s", "Priya · Undecided"].map((item) => <span key={item}><b>{item.split(" · ")[0]}</b><em>{item.split(" · ")[1]}</em></span>)}</div>
-              <button className="full-button" onClick={() => notify("Private invite link copied")}>Invite to crew</button>
-              <section className="why-card"><strong>Built for coordination, not tracking</strong><span>Friends see what you choose to share.</span><span>No background location trails.</span><span>Leave or mute a crew anytime.</span></section>
-            </div>
-          )}
-
-          {tab === "profile" && (
-            <div className="detail-flow">
-              <div className="profile-top"><div className="avatar">{auth.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2)}</div><div><strong>{auth.displayName}</strong><small>{auth.email}</small></div></div>
-              <div className="settings-list">
-                <button><b>Night preferences</b><span>Live energy · low cover · walkable</span><i>›</i></button>
-                <button><b>Intent visibility</b><span>Friends only</span><i>›</i></button>
-                <button><b>Location</b><span>Ask each time</span><i>›</i></button>
-                <button><b>Notifications</b><span>Plan changes · momentum shifts</span><i>›</i></button>
-                <button><b>Safety & blocks</b><span>Manage controls</span><i>›</i></button>
-              </div>
-              {auth.canHostUnofficial && <a className="full-button" href="/host">Create unofficial party</a>}
-            </div>
-          )}
+        <div className="privacy-note">
+          Crew intent is private to invited friends. Hosts see only aggregate demand.
         </div>
-
-        <nav className="native-tabs" aria-label="Student navigation">
-          {([["tonight", "⌁", "Tonight"], ["crew", "◎", "Crew"], ["plans", "◇", "Plans"], ["profile", "○", "You"]] as const).map(([value, icon, label]) => <button className={tab === value ? "active" : ""} onClick={() => openTab(value)} key={value}><i>{icon}</i><span>{label}</span></button>)}
-        </nav>
-        {toast && <div className="toast">{toast}</div>}
-      </article>
+        <div className="button-stack">
+          <button className="full-button" disabled={busyAction != null || !selectedEvent} onClick={() => runStudentAction("Join plan", "interested")}>Join plan</button>
+          <button className="full-button secondary-button" disabled={busyAction != null || !selectedEvent} onClick={() => runStudentAction("Commit arrival", "going")}>Commit {ARRIVAL_WINDOW}</button>
+          <button className="full-button secondary-button" disabled={busyAction != null || !selectedEvent} onClick={() => runStudentAction("Check in", "arrived")}>Check in</button>
+          <button className="full-button secondary-button" disabled={busyAction != null || !selectedEvent} onClick={reportConditions}>Report conditions</button>
+        </div>
+        <p className="status-line">{studentStatus}</p>
+      </PhoneFrame>
+      <PhoneFrame audience="Student" title={auth.displayName} tabs={["Profile", "Privacy", "Safety"]}>
+        <div className="profile-top">
+          <div className="avatar">{auth.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2)}</div>
+          <div><strong>{auth.displayName}</strong><small>{auth.email}</small></div>
+        </div>
+        <div className="settings-list">
+          <span><b>Crew</b> Quad Night, Friday regulars</span>
+          <span><b>Preferences</b> Bars, live music, low cover</span>
+          <span><b>Visibility</b> Friends see intent, not live trails</span>
+          <span><b>Notifications</b> Momentum changes and plan commits</span>
+          <span><b>Plan history</b> {history.length > 0 ? `${history.length} persisted item${history.length === 1 ? "" : "s"}` : "No persisted plans yet"}</span>
+          <span><b>Safety</b> Blocked users and report controls</span>
+        </div>
+        {auth.canHostUnofficial && <button className="full-button">Create unofficial party</button>}
+      </PhoneFrame>
     </section>
   );
 }
 
 function TonightFeed({
   publicPreview = false,
+  events = [],
+  persistedEnabled = false,
+  selectedEventId = null,
+  onSelectEvent,
   onVenueAction,
+  onPersistAction,
 }: {
   publicPreview?: boolean;
+  events?: LiveEvent[];
+  persistedEnabled?: boolean;
+  selectedEventId?: string | null;
+  onSelectEvent?: (eventId: string) => void;
   onVenueAction: (action: string, venueName: string) => void;
+  onPersistAction?: (eventId: string) => void;
 }) {
   return (
     <>
       <div className="search-pill">Champaign campus • Friday 9:15 PM</div>
+      {events.length > 0 && (
+        <div className="feed-list">
+          {events.map((event) => (
+            <LiveEventCard
+              key={event.id}
+              event={event}
+              selected={event.id === selectedEventId}
+              onSelect={() => onSelectEvent?.(event.id)}
+              onJoin={() => onPersistAction?.(event.id)}
+            />
+          ))}
+        </div>
+      )}
       <div className="feed-list">
         {venues.map((venue) => (
           <VenueCard
             key={venue.name}
             venue={venue}
             publicPreview={publicPreview}
+            persistedEnabled={persistedEnabled}
             onVenueAction={onVenueAction}
           />
         ))}
@@ -627,10 +684,12 @@ function TonightFeed({
 function VenueCard({
   venue,
   publicPreview,
+  persistedEnabled,
   onVenueAction,
 }: {
   venue: Venue;
   publicPreview: boolean;
+  persistedEnabled: boolean;
   onVenueAction: (action: string, venueName: string) => void;
 }) {
   return (
@@ -660,7 +719,41 @@ function VenueCard({
       <div className="evidence-list">
         {venue.evidence.map((item) => <span key={item}>{item}</span>)}
       </div>
-      <button className="full-button" onClick={() => onVenueAction(venue.action, venue.name)}>{venue.action}</button>
+      <button className="full-button" onClick={() => onVenueAction(venue.action, venue.name)}>{persistedEnabled ? venue.action : `${venue.action} (preview)`}</button>
+    </article>
+  );
+}
+
+function LiveEventCard({
+  event,
+  selected,
+  onSelect,
+  onJoin,
+}: {
+  event: LiveEvent;
+  selected: boolean;
+  onSelect: () => void;
+  onJoin: () => void;
+}) {
+  return (
+    <article className={`venue-card live-event-card ${selected ? "selected-event" : ""}`}>
+      <div className="venue-main">
+        <div>
+          <strong>{event.title}</strong>
+          <small>{event.event_type.replace("_", " ")} • {new Date(event.starts_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</small>
+        </div>
+        <span className="state momentum-rising">Live</span>
+      </div>
+      <p>Persisted Supabase event. Actions on this card write to your account.</p>
+      <div className="meta-row">
+        <span>{event.cover}</span>
+        <span>{event.age_rule}</span>
+        <span>{event.status}</span>
+      </div>
+      <div className="button-row">
+        <button onClick={onSelect}>Select</button>
+        <button onClick={onJoin}>Join</button>
+      </div>
     </article>
   );
 }

@@ -39,6 +39,16 @@ export async function POST(request: Request) {
     if (eventType === "official" && !canCreateOfficial) {
       return jsonError("Only host or admin accounts can create official host events.", 403);
     }
+    if (eventType === "official" && !payload.hostOrganizationId) {
+      return jsonError("Official host events require a hostOrganizationId.", 400);
+    }
+    if (
+      eventType === "official" &&
+      profile.account_type !== "admin" &&
+      !(await isOrganizationMember(payload.hostOrganizationId, user.id))
+    ) {
+      return jsonError("Host account cannot create events for this organization.", 403);
+    }
     if (eventType === "unofficial_party" && !canCreateUnofficial) {
       return jsonError("Student profile is not enabled to host unofficial parties.", 403);
     }
@@ -66,4 +76,12 @@ export async function POST(request: Request) {
   } catch (error) {
     return routeError(error);
   }
+}
+
+async function isOrganizationMember(organizationId: string | null | undefined, userId: string) {
+  if (!organizationId) return false;
+  const rows = await supabaseRest<{ id: string }[]>(
+    `organization_members?organization_id=eq.${encodeURIComponent(organizationId)}&user_id=eq.${encodeURIComponent(userId)}&select=id&limit=1`,
+  );
+  return rows.length > 0;
 }

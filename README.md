@@ -27,6 +27,8 @@ private data.
 ## Backend Shape
 
 - `supabase/schema.sql` defines the production Supabase schema and RLS policies.
+- `supabase/migrations/0001_pull_up_schema.sql` mirrors that schema in the
+  standard Supabase migrations folder.
 - `app/api/supabase/*` contains Supabase-backed profile, event, attendance,
   host, and admin routes.
 - `app/api/ai/recommendations` contains the server-side OpenAI recommendation
@@ -39,6 +41,11 @@ The hosted demo does not include real Supabase or OpenAI credentials yet, so UI
 actions that would write data are demo behavior unless those variables are set
 in Sites.
 
+With only the three Supabase app variables, the app can use Auth and REST but
+cannot execute raw database DDL. Apply the SQL migration with a Supabase DB
+connection, Supabase CLI session, or the Supabase SQL editor before running the
+persisted journey test.
+
 ## Commands
 
 ```bash
@@ -46,4 +53,9 @@ npm run dev
 npm run build
 npm run lint
 npm test
+npm run test:supabase
 ```
+
+For `npm run test:supabase`, start the local app with `.env.local` loaded first.
+The verifier creates temporary Supabase users and records, checks RLS boundaries,
+and deletes the temporary auth users afterward.

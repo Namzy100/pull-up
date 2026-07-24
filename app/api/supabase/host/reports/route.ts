@@ -2,7 +2,7 @@ import { jsonError, requireProfile, routeError, supabaseRest } from "../../../_s
 
 export async function POST(request: Request) {
   try {
-    const { user } = await requireProfile(request, ["host", "admin"]);
+    const { profile, user } = await requireProfile(request, ["host", "admin"]);
     const payload = (await request.json()) as {
       eventId?: string;
       lineState?: "quiet" | "moving" | "building" | "at_capacity";
@@ -11,6 +11,10 @@ export async function POST(request: Request) {
     };
     if (!payload.eventId || !payload.lineState || payload.capacityPressure == null) {
       return jsonError("eventId, lineState, and capacityPressure are required");
+    }
+
+    if (profile.account_type !== "admin" && !(await canReportForEvent(payload.eventId, user.id))) {
+      return jsonError("Host account cannot report for this event.", 403);
     }
 
     const [report] = await supabaseRest("host_reports", {
@@ -28,4 +32,17 @@ export async function POST(request: Request) {
   } catch (error) {
     return routeError(error);
   }
+}
+
+async function canReportForEvent(eventId: string, userId: string) {
+  const events = await supabaseRest<Array<{ host_organization_id: string | null }>>(
+    `events?id=eq.${encodeURIComponent(eventId)}&select=host_organization_id&limit=1`,
+  );
+  const organizationId = events[0]?.host_organization_id;
+  if (!organizationId) return false;
+
+  const memberships = await supabaseRest<{ id: string }[]>(
+    `organization_members?organization_id=eq.${encodeURIComponent(organizationId)}&user_id=eq.${encodeURIComponent(userId)}&select=id&limit=1`,
+  );
+  return memberships.length > 0;
 }

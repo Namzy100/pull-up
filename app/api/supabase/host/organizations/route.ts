@@ -32,6 +32,15 @@ export async function POST(request: Request) {
       }),
     });
 
+    await supabaseRest("organization_members", {
+      method: "POST",
+      body: JSON.stringify({
+        organization_id: organization.id,
+        user_id: user.id,
+        role: "owner",
+      }),
+    });
+
     return Response.json({ organization }, { status: 201 });
   } catch (error) {
     return routeError(error);

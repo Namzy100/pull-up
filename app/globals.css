@@ -884,6 +884,11 @@ h4 {
   gap: 10px;
 }
 
+.button-stack {
+  display: grid;
+  gap: 8px;
+}
+
 .button-row button,
 .full-button {
   min-height: 46px;
@@ -894,7 +899,19 @@ h4 {
   font-weight: 900;
 }
 
+.button-row button:disabled,
+.full-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .button-row button + button {
+  border: 1px solid var(--line-strong);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.secondary-button {
   border: 1px solid var(--line-strong);
   color: #ffffff;
   background: rgba(255, 255, 255, 0.07);
@@ -930,6 +947,14 @@ h4 {
   border-radius: 8px;
   padding: 14px;
   background: linear-gradient(135deg, rgba(54, 231, 151, 0.14), rgba(108, 168, 255, 0.08));
+}
+
+.live-event-card {
+  border-color: rgba(54, 231, 151, 0.26);
+}
+
+.selected-event {
+  box-shadow: inset 0 0 0 1px rgba(54, 231, 151, 0.5);
 }
 
 .plan-hero span {

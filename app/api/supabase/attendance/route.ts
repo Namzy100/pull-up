@@ -1,5 +1,17 @@
 import { jsonError, requireProfile, routeError, supabaseRest } from "../../_supabase";
 
+export async function GET(request: Request) {
+  try {
+    const { user } = await requireProfile(request, ["student", "admin"]);
+    const rows = await supabaseRest(
+      `attendances?user_id=eq.${encodeURIComponent(user.id)}&select=*,events(*)&order=updated_at.desc&limit=25`,
+    );
+    return Response.json({ attendances: rows });
+  } catch (error) {
+    return routeError(error);
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const { user } = await requireProfile(request, ["student", "admin"]);
@@ -7,6 +19,7 @@ export async function POST(request: Request) {
       eventId?: string;
       status?: "interested" | "going" | "arrived" | "left" | "not_going";
       visibility?: "private" | "friends" | "host_aggregate";
+      arrivalWindow?: string;
     };
     if (!payload.eventId) return jsonError("eventId is required");
 
@@ -31,7 +44,11 @@ export async function POST(request: Request) {
         verification_level: payload.status === "arrived" ? 0.9 : 0.45,
         trust_score: 0.7,
         expires_at: new Date(Date.now() + 1000 * 60 * 90).toISOString(),
-        metadata: { attendance_id: attendance.id, status: payload.status ?? "interested" },
+        metadata: {
+          attendance_id: attendance.id,
+          status: payload.status ?? "interested",
+          arrival_window: payload.arrivalWindow ?? null,
+        },
       }),
     });
 
