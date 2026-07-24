@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 
+type Role = "user" | "host" | "admin";
 type VenueState = "rising" | "stable" | "uncertain";
+type Risk = "low" | "watch" | "high";
 
 type Signal = {
   label: string;
@@ -15,6 +17,7 @@ type Signal = {
 type Venue = {
   id: string;
   name: string;
+  host: string;
   type: string;
   state: VenueState;
   distance: string;
@@ -23,17 +26,29 @@ type Venue = {
   lastUpdated: string;
   arrivalTrend: string;
   friendIntent: string;
+  hostNote: string;
   confidence: number;
   calibration: number;
-  risk: "low" | "watch" | "high";
+  risk: Risk;
+  capacity: number;
+  demand: number;
   reports: string[];
   signals: Signal[];
+};
+
+type AdminItem = {
+  title: string;
+  venue: string;
+  severity: Risk;
+  detail: string;
+  action: string;
 };
 
 const venues: Venue[] = [
   {
     id: "joes",
     name: "Joes Brewery",
+    host: "Joes ops desk",
     type: "Campus bar",
     state: "rising",
     distance: "0.4 mi",
@@ -42,9 +57,12 @@ const venues: Venue[] = [
     lastUpdated: "8 min ago",
     arrivalTrend: "+42 verified arrivals",
     friendIntent: "18 friends saved or heading there",
+    hostNote: "Line moved from patio to corner. No comped placement attached.",
     confidence: 86,
     calibration: 1.08,
     risk: "low",
+    capacity: 78,
+    demand: 91,
     reports: [
       "Ambassador Maya checked line movement twice in 20 minutes.",
       "Two friend groups switched from pregame to Joes after 10:05.",
@@ -57,33 +75,9 @@ const venues: Venue[] = [
     ],
   },
   {
-    id: "kams",
-    name: "KAMS",
-    type: "Nightlife staple",
-    state: "stable",
-    distance: "0.7 mi",
-    cover: "$10",
-    age: "19+",
-    lastUpdated: "11 min ago",
-    arrivalTrend: "+25 verified arrivals",
-    friendIntent: "9 friends watching",
-    confidence: 71,
-    calibration: 0.96,
-    risk: "watch",
-    reports: [
-      "Strong baseline demand, but arrivals flattened after 10:15.",
-      "One duplicate report cluster was downweighted.",
-      "Ambassador says line is moving, not spiking.",
-    ],
-    signals: [
-      { label: "Verified check-ins", count: 25, trust: 0.9, freshness: 0.76, verification: 1 },
-      { label: "Saves", count: 31, trust: 0.68, freshness: 0.8, verification: 0.5 },
-      { label: "Ambassador report", count: 2, trust: 0.91, freshness: 0.74, verification: 0.92 },
-    ],
-  },
-  {
     id: "canopy",
     name: "Canopy Club",
+    host: "Canopy show team",
     type: "Live event",
     state: "rising",
     distance: "1.1 mi",
@@ -92,9 +86,12 @@ const venues: Venue[] = [
     lastUpdated: "5 min ago",
     arrivalTrend: "+34 recent arrivals",
     friendIntent: "7 friends committed",
+    hostNote: "Ticket scans accelerated after opener. Door team reports steady entry.",
     confidence: 79,
     calibration: 1.02,
     risk: "low",
+    capacity: 64,
+    demand: 83,
     reports: [
       "Ticket scans accelerated after opener ended.",
       "Student org report confirms a large group is en route.",
@@ -107,8 +104,38 @@ const venues: Venue[] = [
     ],
   },
   {
+    id: "kams",
+    name: "KAMS",
+    host: "KAMS promotions",
+    type: "Nightlife staple",
+    state: "stable",
+    distance: "0.7 mi",
+    cover: "$10",
+    age: "19+",
+    lastUpdated: "11 min ago",
+    arrivalTrend: "+25 verified arrivals",
+    friendIntent: "9 friends watching",
+    hostNote: "Baseline demand is healthy, but arrival velocity flattened after 10:15.",
+    confidence: 71,
+    calibration: 0.96,
+    risk: "watch",
+    capacity: 58,
+    demand: 68,
+    reports: [
+      "Strong baseline demand, but arrivals flattened after 10:15.",
+      "One duplicate report cluster was downweighted.",
+      "Ambassador says line is moving, not spiking.",
+    ],
+    signals: [
+      { label: "Verified check-ins", count: 25, trust: 0.9, freshness: 0.76, verification: 1 },
+      { label: "Saves", count: 31, trust: 0.68, freshness: 0.8, verification: 0.5 },
+      { label: "Ambassador report", count: 2, trust: 0.91, freshness: 0.74, verification: 0.92 },
+    ],
+  },
+  {
     id: "murphys",
     name: "Murphys Pub",
+    host: "Murphys manager",
     type: "Pub",
     state: "uncertain",
     distance: "0.5 mi",
@@ -117,9 +144,12 @@ const venues: Venue[] = [
     lastUpdated: "27 min ago",
     arrivalTrend: "Sparse recent arrivals",
     friendIntent: "4 friends interested",
+    hostNote: "Host report conflicts with verified arrivals. Needs neutral review.",
     confidence: 39,
     calibration: 0.88,
     risk: "high",
+    capacity: 36,
+    demand: 41,
     reports: [
       "Signals are old and mostly unverified saves.",
       "One ambassador report conflicts with check-in data.",
@@ -133,11 +163,35 @@ const venues: Venue[] = [
   },
 ];
 
-const researchTasks = [
-  "Run the concierge Tonight briefing with five friend groups this weekend.",
-  "Tag every signal with source, timestamp, expiry, verification, and weight.",
-  "Interview students within 12 hours of going out and reconstruct their decision path.",
-  "Keep sponsored placements separate from organic momentum.",
+const adminQueue: AdminItem[] = [
+  {
+    title: "Duplicate intent cluster",
+    venue: "KAMS",
+    severity: "watch",
+    detail: "Nine saves came from adjacent accounts in a six-minute window.",
+    action: "Downweight cluster",
+  },
+  {
+    title: "Conflicting host claim",
+    venue: "Murphys Pub",
+    severity: "high",
+    detail: "Host reports a line; verified arrivals and ambassadors do not confirm.",
+    action: "Keep abstained",
+  },
+  {
+    title: "Ambassador confidence lift",
+    venue: "Joes Brewery",
+    severity: "low",
+    detail: "Two trusted field reports match arrival velocity and friend intent.",
+    action: "Approve rising",
+  },
+];
+
+const hostChecklist = [
+  "Submit one operational note, never a ranking claim.",
+  "Report cover, age rule, line state, and capacity pressure.",
+  "See attribution and demand quality, not private user trails.",
+  "Paid promotion stays separate from organic momentum.",
 ];
 
 function scoreVenue(venue: Venue) {
@@ -153,9 +207,39 @@ function stateCopy(state: VenueState) {
   return "Not enough signal";
 }
 
+function roleCopy(role: Role) {
+  if (role === "user") {
+    return {
+      eyebrow: "Student view",
+      title: "Pick the move without trusting rumor.",
+      body: "Students see a confidence-labeled Tonight feed, evidence, friend intent, and a clear abstention when Pull Up cannot verify momentum.",
+    };
+  }
+
+  if (role === "host") {
+    return {
+      eyebrow: "Host view",
+      title: "Hosts can inform the night, not buy the truth.",
+      body: "Party hosts and venues see demand quality, submitted reports, capacity pressure, and attribution without receiving private social graphs or location trails.",
+    };
+  }
+
+  return {
+    eyebrow: "Admin view",
+    title: "The team protects the signal layer.",
+    body: "Admins review manipulation flags, replay scores from raw signals, approve evidence summaries, and decide when the product should abstain.",
+  };
+}
+
+function riskLabel(risk: Risk) {
+  if (risk === "low") return "clean";
+  if (risk === "watch") return "watch";
+  return "review";
+}
+
 export default function Home() {
+  const [role, setRole] = useState<Role>("user");
   const [selectedVenueId, setSelectedVenueId] = useState(venues[0].id);
-  const [view, setView] = useState<"tonight" | "console">("tonight");
   const selectedVenue = venues.find((venue) => venue.id === selectedVenueId) ?? venues[0];
   const rankedVenues = useMemo(
     () => [...venues].sort((a, b) => b.confidence - a.confidence),
@@ -164,78 +248,73 @@ export default function Home() {
   const strongestSignal = selectedVenue.signals.reduce((top, signal) =>
     signal.count > top.count ? signal : top,
   );
+  const currentRole = roleCopy(role);
 
   return (
-    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+    <main>
       <section className="top-shell">
         <nav className="nav-bar" aria-label="Primary">
           <div>
             <p className="eyebrow">UIUC closed beta</p>
             <h1>Pull Up</h1>
           </div>
-          <div className="view-toggle" aria-label="Choose app view">
-            <button
-              className={view === "tonight" ? "active" : ""}
-              onClick={() => setView("tonight")}
-              type="button"
-            >
-              Tonight
-            </button>
-            <button
-              className={view === "console" ? "active" : ""}
-              onClick={() => setView("console")}
-              type="button"
-            >
-              Console
-            </button>
+          <div className="role-toggle" aria-label="Choose interface">
+            {(["user", "host", "admin"] as Role[]).map((nextRole) => (
+              <button
+                className={role === nextRole ? "active" : ""}
+                key={nextRole}
+                onClick={() => setRole(nextRole)}
+                type="button"
+              >
+                {nextRole === "user" ? "User" : nextRole === "host" ? "Host" : "Admin"}
+              </button>
+            ))}
           </div>
         </nav>
 
         <div className="hero-grid">
           <div className="hero-copy">
-            <p className="contract">Ranking contract</p>
-            <h2>Know where the night is going before you commit.</h2>
-            <p>
-              Pull Up ranks campus nightlife only when verified momentum is fresh
-              enough to trust. Weak evidence becomes an abstention, not a fake
-              crowd claim.
-            </p>
+            <p className="contract">{currentRole.eyebrow}</p>
+            <h2>{currentRole.title}</h2>
+            <p>{currentRole.body}</p>
             <div className="contract-strip" aria-label="Product guardrails">
               <span>No paid ranking</span>
-              <span>No surveillance trail</span>
-              <span>No invented crowd claims</span>
+              <span>No private trails</span>
+              <span>Abstain on weak data</span>
             </div>
           </div>
 
-          <div className="pulse-panel" aria-label="Tonight signal summary">
+          <div className="live-card" aria-label="Tonight signal summary">
+            <div className="live-orbit">
+              <span />
+              <b>119</b>
+              <small>live signals</small>
+            </div>
             <div>
               <p className="eyebrow">Tonight window</p>
               <strong>Thu-Sat, 9:45 PM-1:30 AM</strong>
             </div>
-            <div className="pulse-meter">
-              <span style={{ width: "86%" }} />
-            </div>
-            <div className="pulse-stats">
+            <div className="mini-stats">
               <span>
                 <b>4</b>
-                venues watched
-              </span>
-              <span>
-                <b>119</b>
-                live signals
+                watched
               </span>
               <span>
                 <b>1</b>
-                abstention
+                abstained
+              </span>
+              <span>
+                <b>3</b>
+                host notes
               </span>
             </div>
           </div>
         </div>
       </section>
 
-      {view === "tonight" ? (
-        <section className="app-grid" aria-label="Tonight momentum view">
-          <div className="feed-panel">
+      {role === "user" && (
+        <section className="workspace-grid" aria-label="User Tonight view">
+          <div className="panel">
             <div className="section-heading">
               <div>
                 <p className="eyebrow">Ranked shortlist</p>
@@ -272,13 +351,13 @@ export default function Home() {
             </div>
           </div>
 
-          <aside className="detail-panel" aria-label={`${selectedVenue.name} evidence`}>
+          <aside className="panel detail-panel" aria-label={`${selectedVenue.name} evidence`}>
             <div className="detail-top">
               <div>
                 <p className="eyebrow">Evidence replay</p>
                 <h3>{selectedVenue.name}</h3>
               </div>
-              <span className={`risk ${selectedVenue.risk}`}>{selectedVenue.risk}</span>
+              <span className={`risk ${selectedVenue.risk}`}>{riskLabel(selectedVenue.risk)}</span>
             </div>
 
             <div className="score-ring" aria-label={`Confidence ${selectedVenue.confidence}`}>
@@ -292,20 +371,7 @@ export default function Home() {
               <small>Updated {selectedVenue.lastUpdated}</small>
             </div>
 
-            <div className="signal-stack">
-              {selectedVenue.signals.map((signal) => (
-                <div className="signal-row" key={signal.label}>
-                  <div>
-                    <strong>{signal.label}</strong>
-                    <small>
-                      trust {Math.round(signal.trust * 100)}%, freshness{" "}
-                      {Math.round(signal.freshness * 100)}%
-                    </small>
-                  </div>
-                  <span>{signal.count}</span>
-                </div>
-              ))}
-            </div>
+            <SignalStack venue={selectedVenue} />
 
             <div className="reports">
               {selectedVenue.reports.map((report) => (
@@ -319,58 +385,192 @@ export default function Home() {
             </div>
           </aside>
         </section>
-      ) : (
-        <section className="console-grid" aria-label="Internal moderation console">
-          <div className="moderation-panel">
+      )}
+
+      {role === "host" && (
+        <section className="workspace-grid host-grid" aria-label="Host operations view">
+          <div className="panel host-command">
             <div className="section-heading">
               <div>
-                <p className="eyebrow">Signal quality</p>
-                <h3>Moderation console</h3>
+                <p className="eyebrow">Host dashboard</p>
+                <h3>{selectedVenue.host}</h3>
               </div>
-              <span>Internal only</span>
+              <span>{selectedVenue.name}</span>
             </div>
-            <div className="review-table">
-              {venues.map((venue) => {
-                const replayScore = scoreVenue(venue);
-                return (
-                  <div className="review-row" key={venue.id}>
-                    <div>
-                      <strong>{venue.name}</strong>
-                      <small>
-                        replay score {replayScore} | displayed {venue.confidence}
-                      </small>
-                    </div>
-                    <span className={`state-pill ${venue.state}`}>
-                      {stateCopy(venue.state)}
-                    </span>
-                    <span className={`risk ${venue.risk}`}>{venue.risk}</span>
-                  </div>
-                );
-              })}
+
+            <div className="host-metrics">
+              <Metric label="Demand quality" value={`${selectedVenue.demand}%`} tone="green" />
+              <Metric label="Capacity pressure" value={`${selectedVenue.capacity}%`} tone="amber" />
+              <Metric label="Public confidence" value={`${selectedVenue.confidence}`} tone="blue" />
+            </div>
+
+            <div className="host-note">
+              <p className="eyebrow">Latest host note</p>
+              <strong>{selectedVenue.hostNote}</strong>
+              <p>
+                Hosts can improve the evidence layer with operational facts. Pull Up
+                decides whether those facts are enough to affect the user ranking.
+              </p>
+            </div>
+
+            <div className="submit-box" aria-label="Host report form mockup">
+              <label>
+                Line state
+                <select defaultValue="moving">
+                  <option value="moving">Moving steadily</option>
+                  <option value="building">Building fast</option>
+                  <option value="quiet">Quiet</option>
+                </select>
+              </label>
+              <label>
+                Capacity pressure
+                <input defaultValue={`${selectedVenue.capacity}%`} />
+              </label>
+              <label>
+                Ops note
+                <textarea defaultValue={selectedVenue.hostNote} />
+              </label>
+              <button type="button">Submit report for review</button>
             </div>
           </div>
 
-          <div className="ops-panel">
-            <div>
-              <p className="eyebrow">Strongest live signal</p>
-              <h3>{strongestSignal.label}</h3>
-              <p>
-                {selectedVenue.name} is currently driven by {strongestSignal.count}{" "}
-                recent signal events. This is the input an operator can inspect
-                before publishing a Tonight briefing.
-              </p>
+          <aside className="panel">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Host boundaries</p>
+                <h3>What hosts see</h3>
+              </div>
+            </div>
+            <div className="venue-list compact">
+              {rankedVenues.map((venue) => (
+                <button
+                  className={`venue-card host-row ${selectedVenueId === venue.id ? "selected" : ""}`}
+                  key={venue.id}
+                  onClick={() => setSelectedVenueId(venue.id)}
+                  type="button"
+                >
+                  <span className="venue-main">
+                    <span className="venue-title">
+                      <strong>{venue.name}</strong>
+                      <small>{venue.host}</small>
+                    </span>
+                    <span className={`state-pill ${venue.state}`}>{stateCopy(venue.state)}</span>
+                  </span>
+                  <span className="confidence">
+                    <b>{venue.demand}</b>
+                    demand
+                  </span>
+                </button>
+              ))}
             </div>
             <div className="task-list">
-              {researchTasks.map((task) => (
-                <label key={task}>
-                  <input type="checkbox" />
-                  <span>{task}</span>
+              {hostChecklist.map((item) => (
+                <label key={item}>
+                  <input type="checkbox" defaultChecked />
+                  <span>{item}</span>
                 </label>
               ))}
             </div>
+          </aside>
+        </section>
+      )}
+
+      {role === "admin" && (
+        <section className="workspace-grid admin-grid" aria-label="Admin review view">
+          <div className="panel">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Signal integrity</p>
+                <h3>Admin review queue</h3>
+              </div>
+              <span>Middle layer</span>
+            </div>
+
+            <div className="review-table">
+              {adminQueue.map((item) => (
+                <div className="review-row" key={item.title}>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <small>
+                      {item.venue} | {item.detail}
+                    </small>
+                  </div>
+                  <span className={`risk ${item.severity}`}>{riskLabel(item.severity)}</span>
+                  <button type="button">{item.action}</button>
+                </div>
+              ))}
+            </div>
           </div>
+
+          <aside className="panel admin-rail">
+            <div>
+              <p className="eyebrow">Score replay</p>
+              <h3>{selectedVenue.name}</h3>
+              <p>
+                Displayed confidence is {selectedVenue.confidence}; replay from raw
+                signals returns {scoreVenue(selectedVenue)}. Admins inspect the
+                delta before publishing or suppressing claims.
+              </p>
+            </div>
+
+            <SignalStack venue={selectedVenue} />
+
+            <div className="admin-actions">
+              <button type="button">Approve summary</button>
+              <button type="button">Abstain tonight</button>
+              <button type="button">Escalate manipulation</button>
+            </div>
+
+            <div className="venue-list compact">
+              {rankedVenues.map((venue) => (
+                <button
+                  className={`venue-card host-row ${selectedVenueId === venue.id ? "selected" : ""}`}
+                  key={venue.id}
+                  onClick={() => setSelectedVenueId(venue.id)}
+                  type="button"
+                >
+                  <span className="venue-main">
+                    <span className="venue-title">
+                      <strong>{venue.name}</strong>
+                      <small>{venue.lastUpdated}</small>
+                    </span>
+                  </span>
+                  <span className={`risk ${venue.risk}`}>{riskLabel(venue.risk)}</span>
+                </button>
+              ))}
+            </div>
+          </aside>
         </section>
       )}
     </main>
+  );
+}
+
+function Metric({ label, value, tone }: { label: string; value: string; tone: string }) {
+  return (
+    <div className={`metric ${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function SignalStack({ venue }: { venue: Venue }) {
+  return (
+    <div className="signal-stack">
+      {venue.signals.map((signal) => (
+        <div className="signal-row" key={signal.label}>
+          <div>
+            <strong>{signal.label}</strong>
+            <small>
+              trust {Math.round(signal.trust * 100)}%, freshness{" "}
+              {Math.round(signal.freshness * 100)}%, verified{" "}
+              {Math.round(signal.verification * 100)}%
+            </small>
+          </div>
+          <span>{signal.count}</span>
+        </div>
+      ))}
+    </div>
   );
 }

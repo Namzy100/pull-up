@@ -32,11 +32,13 @@ test("server-renders the Pull Up product shell", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>Pull Up<\/title>/i);
-  assert.match(html, /Know where the night is going before you commit\./);
+  assert.match(html, /Pick the move without trusting rumor\./);
   assert.match(html, /No paid ranking/);
   assert.match(html, /Joes Brewery/);
   assert.match(html, /Not enough signal/);
-  assert.match(html, />Console</);
+  assert.match(html, />User</);
+  assert.match(html, />Host</);
+  assert.match(html, />Admin</);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
 
@@ -47,7 +49,10 @@ test("removes disposable starter preview code", async () => {
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /Ranking contract/);
+  assert.match(page, /Product guardrails/);
+  assert.match(page, /Host dashboard/);
+  assert.match(page, /Admin review queue/);
+  assert.match(page, /Submit report for review/);
   assert.match(page, /scoreVenue/);
   assert.match(layout, /title:\s*"Pull Up"/);
   assert.doesNotMatch(page, /_sites-preview|SkeletonPreview|codex-preview/);
