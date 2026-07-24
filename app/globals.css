@@ -54,6 +54,215 @@ main {
   padding: clamp(18px, 4vw, 56px);
 }
 
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-shell {
+  min-height: 100svh;
+}
+
+.auth-screen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 420px);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.auth-copy,
+.auth-card,
+.locked-screen {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(16, 20, 28, 0.84);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.26);
+}
+
+.auth-copy {
+  min-height: 720px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 24px;
+  padding: clamp(26px, 5vw, 58px);
+  background:
+    linear-gradient(120deg, rgba(6, 7, 10, 0.92), rgba(6, 7, 10, 0.44)),
+    url("https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1600&q=80");
+  background-position: center;
+  background-size: cover;
+}
+
+.auth-copy h1,
+.locked-screen h1 {
+  max-width: 820px;
+  font-size: clamp(3rem, 7vw, 6.8rem);
+  line-height: 0.9;
+}
+
+.auth-copy p,
+.locked-screen p {
+  max-width: 760px;
+  color: var(--soft);
+  line-height: 1.6;
+}
+
+.auth-card {
+  display: grid;
+  align-content: end;
+  gap: 14px;
+  padding: 22px;
+}
+
+.auth-card h2 {
+  font-size: 2rem;
+}
+
+.auth-card label {
+  display: grid;
+  gap: 7px;
+  color: var(--soft);
+  font-size: 0.86rem;
+  font-weight: 780;
+}
+
+.auth-card input,
+.auth-card select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 13px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.auth-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.auth-actions button,
+.auth-actions a,
+.ghost-button {
+  display: grid;
+  place-items: center;
+  min-height: 46px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--ink);
+  background: linear-gradient(135deg, var(--green), var(--blue));
+  font-weight: 900;
+}
+
+.auth-actions button + button,
+.ghost-button {
+  border: 1px solid var(--line-strong);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.status-line {
+  min-height: 42px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.door-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.door-card {
+  min-height: 148px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.door-card strong {
+  color: #ffffff;
+  font-size: 1.05rem;
+}
+
+.door-card span {
+  color: var(--soft);
+  line-height: 1.4;
+}
+
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(6, 7, 10, 0.82);
+  backdrop-filter: blur(18px);
+}
+
+.brand {
+  color: var(--green);
+  font-size: 1.1rem;
+  font-weight: 950;
+}
+
+.top-bar div {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.top-bar small {
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.top-bar button {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+  font-weight: 850;
+}
+
+.mobile-product {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(260px, 390px));
+  justify-content: center;
+  gap: 18px;
+  align-items: start;
+}
+
+.admin-app {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.85fr) minmax(360px, 1.1fr) minmax(300px, 0.8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.locked-screen {
+  min-height: 620px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 18px;
+  padding: clamp(26px, 5vw, 58px);
+}
+
 .hero,
 .surface-section,
 .access-section {
@@ -586,6 +795,9 @@ h4 {
 @media (max-width: 1040px) {
   .hero,
   .admin-layout,
+  .admin-app,
+  .auth-screen,
+  .mobile-product,
   .phone-grid,
   .access-grid {
     grid-template-columns: 1fr;
@@ -598,6 +810,10 @@ h4 {
   .phone-frame {
     width: min(100%, 390px);
   }
+
+  .auth-copy {
+    min-height: 560px;
+  }
 }
 
 @media (max-width: 560px) {
@@ -609,14 +825,31 @@ h4 {
     font-size: 3rem;
   }
 
+  .auth-copy h1,
+  .locked-screen h1 {
+    font-size: 3rem;
+  }
+
   .surface-copy h2 {
     font-size: 2.3rem;
   }
 
   .hero-copy,
   .system-card,
+  .auth-copy,
+  .auth-card,
   .admin-panel {
     padding: 18px;
+  }
+
+  .door-grid,
+  .auth-actions,
+  .top-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .top-bar div {
+    justify-items: start;
   }
 
   .phone-frame {

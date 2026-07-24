@@ -5,30 +5,38 @@ import test from "node:test";
 const templateRoot = new URL("../", import.meta.url);
 
 test("defines the mobile Pull Up product shell", async () => {
-  const [page, layout, css] = await Promise.all([
+  const [page, app, student, host, admin, layout, css] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/PullUpClientApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/student/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/host/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
 
   assert.match(layout, /title:\s*"Pull Up"/);
-  assert.match(page, /Three apps, one nightlife signal layer\./);
-  assert.match(page, /Separate doors, shared data spine\./);
-  assert.match(page, /Student mobile app/);
-  assert.match(page, /Host mobile app/);
-  assert.match(page, /Admin review console/);
-  assert.match(page, /Enable unofficial hosting/);
-  assert.match(page, /Find the move, coordinate, check in\./);
-  assert.match(page, /Joes ops/);
-  assert.match(page, /Review workbench/);
-  assert.match(page, /Submit to Pull Up review/);
+  assert.match(page, /PullUpClientApp/);
+  assert.match(app, /Sign in, then land in exactly one nightlife app\./);
+  assert.match(app, /Access blocked/);
+  assert.match(app, /requiredRole === "host" && auth\.accountType === "student" && auth\.canHostUnofficial/);
+  assert.match(app, /Student app/);
+  assert.match(app, /Host app/);
+  assert.match(app, /Admin app/);
+  assert.match(app, /Create unofficial party/);
+  assert.match(app, /Review workbench/);
+  assert.match(app, /Submit to Pull Up review/);
+  assert.match(student, /requiredRole="student"/);
+  assert.match(host, /requiredRole="host"/);
+  assert.match(admin, /requiredRole="admin"/);
   assert.match(css, /\.phone-frame/);
-  assert.match(css, /\.admin-layout/);
-  assert.doesNotMatch(page, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
+  assert.match(css, /\.auth-screen/);
+  assert.match(css, /\.admin-app/);
+  assert.doesNotMatch(app, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
 
 test("defines the backend schema and API surface", async () => {
-  const [schema, supabaseSchema, envExample, profileApi, eventsApi, attendanceApi, hostReportsApi, adminApi, aiApi] =
+  const [schema, supabaseSchema, envExample, profileApi, eventsApi, attendanceApi, hostReportsApi, adminApi, aiApi, authConfigApi] =
     await Promise.all([
       readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
       readFile(new URL("../supabase/schema.sql", import.meta.url), "utf8"),
@@ -39,6 +47,7 @@ test("defines the backend schema and API surface", async () => {
       readFile(new URL("../app/api/supabase/host/reports/route.ts", import.meta.url), "utf8"),
       readFile(new URL("../app/api/supabase/admin/reviews/route.ts", import.meta.url), "utf8"),
       readFile(new URL("../app/api/ai/recommendations/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/auth/config/route.ts", import.meta.url), "utf8"),
     ]);
 
   for (const table of [
@@ -69,6 +78,8 @@ test("defines the backend schema and API surface", async () => {
   assert.match(adminApi, /requireProfile\(request, \["admin"\]\)/);
   assert.match(aiApi, /OPENAI_API_KEY/);
   assert.match(aiApi, /store: false/);
+  assert.match(authConfigApi, /SUPABASE_ANON_KEY/);
+  assert.doesNotMatch(authConfigApi, /SUPABASE_SERVICE_ROLE_KEY/);
 
   await access(new URL("../drizzle/0000_vengeful_blue_shield.sql", import.meta.url));
 });
