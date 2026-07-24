@@ -3,10 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AccountType,
+  Venue,
   adminQueue,
+  coldStartStages,
+  confidenceCopy,
   demoProfiles,
+  fridayJourney,
+  momentumCopy,
   riskCopy,
-  stateCopy,
+  signalHierarchy,
   venues,
 } from "../pull-up-data";
 
@@ -29,15 +34,18 @@ const STORAGE_KEY = "pull-up-session";
 
 export default function PullUpClientApp({ requiredRole }: { requiredRole?: AccountType }) {
   const [auth, setAuth] = useState<AuthState | null>(null);
-  const [email, setEmail] = useState("naman@illinois.edu");
+  const [email, setEmail] = useState("sarah@illinois.edu");
   const [password, setPassword] = useState("pullup-demo-pass");
   const [accountType, setAccountType] = useState<AccountType>("student");
-  const [message, setMessage] = useState("Demo mode is available until Supabase keys are added.");
+  const [message, setMessage] = useState("Preview tonight without signing in. Join a plan when you are ready.");
   const [loading, setLoading] = useState(false);
+  const [planState, setPlanState] = useState("No plan joined yet.");
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved) setAuth(JSON.parse(saved) as AuthState);
+    window.setTimeout(() => {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (saved) setAuth(JSON.parse(saved) as AuthState);
+    }, 0);
   }, []);
 
   useEffect(() => {
@@ -45,7 +53,7 @@ export default function PullUpClientApp({ requiredRole }: { requiredRole?: Accou
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(auth));
   }, [auth]);
 
-  const activeRole = requiredRole ?? auth?.accountType ?? accountType;
+  const activeRole = requiredRole ?? auth?.accountType ?? "student";
   const isAllowed = useMemo(() => {
     if (!requiredRole || !auth) return true;
     if (auth.accountType === requiredRole) return true;
@@ -128,67 +136,38 @@ export default function PullUpClientApp({ requiredRole }: { requiredRole?: Accou
   function signOut() {
     window.localStorage.removeItem(STORAGE_KEY);
     setAuth(null);
-    setMessage("Signed out. Choose a role to preview or connect Supabase for real users.");
+    setMessage("Signed out. You can still preview the public Tonight feed.");
   }
 
-  if (!auth) {
+  function requireAction(action: string, venueName: string) {
+    if (!auth) {
+      setMessage(`${action} for ${venueName} needs sign-in so friend context stays private.`);
+      return;
+    }
+    setPlanState(`${action} saved for ${venueName}. Demo only until Supabase is configured.`);
+  }
+
+  if (requiredRole && !auth) {
     return (
       <main className="app-shell">
-        <section className="auth-screen">
-          <div className="auth-copy">
-            <p className="eyebrow">Pull Up app</p>
-            <h1>Sign in, then land in exactly one nightlife app.</h1>
-            <p>
-              Students get Tonight. Host organizations get event operations.
-              Admins get review and trust controls. The backend is the boundary,
-              not a tab switch.
-            </p>
-            <div className="door-grid">
-              <Door role="student" title="Student app" body="Tonight, friends, check-ins, profile, and optional unofficial hosting." />
-              <Door role="host" title="Host app" body="Frats, pubs, bars, clubs, and orgs create events and report facts." />
-              <Door role="admin" title="Admin app" body="The Pull Up team reviews events, accounts, signals, and safety calls." />
-            </div>
-          </div>
-          <form className="auth-card" onSubmit={(event) => event.preventDefault()}>
-            <div>
-              <p className="eyebrow">Authentication</p>
-              <h2>Account door</h2>
-            </div>
-            <label>
-              Email
-              <input value={email} onChange={(event) => setEmail(event.target.value)} />
-            </label>
-            <label>
-              Password
-              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
-            </label>
-            <label>
-              Demo role
-              <select value={accountType} onChange={(event) => setAccountType(event.target.value as AccountType)}>
-                <option value="student">Student</option>
-                <option value="host">Host org</option>
-                <option value="admin">Admin</option>
-              </select>
-            </label>
-            <div className="auth-actions">
-              <button type="button" onClick={() => signIn("signin")} disabled={loading}>
-                Sign in
-              </button>
-              <button type="button" onClick={() => signIn("signup")} disabled={loading}>
-                Sign up
-              </button>
-            </div>
-            <button className="ghost-button" type="button" onClick={() => startDemo(accountType)}>
-              Open demo {accountType} app
-            </button>
-            <p className="status-line">{message}</p>
-          </form>
-        </section>
+        <PublicTonight
+          email={email}
+          password={password}
+          accountType={accountType}
+          message={message}
+          loading={loading}
+          setEmail={setEmail}
+          setPassword={setPassword}
+          setAccountType={setAccountType}
+          signIn={signIn}
+          startDemo={startDemo}
+          onVenueAction={requireAction}
+        />
       </main>
     );
   }
 
-  if (!isAllowed) {
+  if (auth && !isAllowed) {
     return (
       <main className="app-shell">
         <section className="locked-screen">
@@ -209,76 +188,244 @@ export default function PullUpClientApp({ requiredRole }: { requiredRole?: Accou
 
   return (
     <main className="app-shell">
-      <AppHeader auth={auth} onSignOut={signOut} />
-      {activeRole === "student" && <StudentApp auth={auth} />}
-      {activeRole === "host" && <HostApp auth={auth} />}
-      {activeRole === "admin" && <AdminApp auth={auth} />}
+      {auth && <AppHeader auth={auth} onSignOut={signOut} />}
+      {!auth && (
+        <PublicTonight
+          email={email}
+          password={password}
+          accountType={accountType}
+          message={message}
+          loading={loading}
+          setEmail={setEmail}
+          setPassword={setPassword}
+          setAccountType={setAccountType}
+          signIn={signIn}
+          startDemo={startDemo}
+          onVenueAction={requireAction}
+        />
+      )}
+      {auth && activeRole === "student" && <StudentApp auth={auth} planState={planState} onVenueAction={requireAction} />}
+      {auth && activeRole === "host" && <HostApp auth={auth} />}
+      {auth && activeRole === "admin" && <AdminApp />}
     </main>
   );
 }
 
-function Door({ role, title, body }: { role: AccountType; title: string; body: string }) {
+function PublicTonight({
+  email,
+  password,
+  accountType,
+  message,
+  loading,
+  setEmail,
+  setPassword,
+  setAccountType,
+  signIn,
+  startDemo,
+  onVenueAction,
+}: {
+  email: string;
+  password: string;
+  accountType: AccountType;
+  message: string;
+  loading: boolean;
+  setEmail: (value: string) => void;
+  setPassword: (value: string) => void;
+  setAccountType: (value: AccountType) => void;
+  signIn: (mode: "signin" | "signup") => void;
+  startDemo: (role: AccountType) => void;
+  onVenueAction: (action: string, venueName: string) => void;
+}) {
   return (
-    <a className={`door-card ${role}`} href={`/${role}`}>
-      <strong>{title}</strong>
-      <span>{body}</span>
-    </a>
-  );
-}
+    <>
+      <section className="student-hero">
+        <div className="hero-story">
+          <p className="eyebrow">UIUC tonight</p>
+          <h1>Know where campus is actually going tonight.</h1>
+          <p>
+            Stop guessing from group chats and half-updated stories. Pull Up
+            shows what is building, where your crew is leaning, and when to go.
+          </p>
+          <div className="hero-actions">
+            <a href="/student">Open Tonight</a>
+            <button onClick={() => onVenueAction("Join the plan", "Joe's Brewery")}>Join Joe&apos;s plan</button>
+          </div>
+          <p className="platform-note">
+            This hosted preview may still show a platform sign-in gate. Pull Up&apos;s intended production flow lets students preview a privacy-safe feed before signing in.
+          </p>
+        </div>
+        <PhoneFrame audience="Public preview" title="Tonight" tabs={["Tonight", "Crew", "Plans"]}>
+          <TonightFeed publicPreview onVenueAction={onVenueAction} />
+        </PhoneFrame>
+      </section>
 
-function AppHeader({ auth, onSignOut }: { auth: AuthState; onSignOut: () => void }) {
-  return (
-    <header className="top-bar">
-      <a className="brand" href="/">Pull Up</a>
-      <div>
-        <span>{auth.displayName}</span>
-        <small>{auth.accountType}{auth.isDemo ? " demo" : ""}</small>
-      </div>
-      <button onClick={onSignOut}>Sign out</button>
-    </header>
-  );
-}
-
-function StudentApp({ auth }: { auth: AuthState }) {
-  return (
-    <section className="mobile-product student-app">
-      <PhoneFrame audience="Student" title="Tonight" tabs={["Tonight", "Friends", "Profile"]}>
-        <div className="search-pill">Near campus • live now</div>
-        <div className="feed-list">
-          {venues.map((venue, index) => (
-            <div className="venue-card" key={venue.name}>
-              <span className="rank">{index + 1}</span>
-              <div>
-                <strong>{venue.name}</strong>
-                <small>{venue.distance} • {venue.cover} • {venue.age}</small>
-                <span className={`state ${venue.state}`}>{stateCopy(venue.state)}</span>
-              </div>
-              <b>{venue.confidence}</b>
-            </div>
+      <section className="journey-section">
+        <SectionIntro
+          label="Friday-night loop"
+          title="One decision, four moments."
+          body="The student product is not a leaderboard. It is a coordination loop: discover momentum, check crew intent, join a plan, then verify what changed when someone arrives."
+        />
+        <div className="journey-grid">
+          {fridayJourney.map((step) => (
+            <article className="journey-card" key={step.time}>
+              <span>{step.time}</span>
+              <h3>{step.title}</h3>
+              <p>{step.detail}</p>
+            </article>
           ))}
         </div>
-      </PhoneFrame>
-      <PhoneFrame audience="Student" title="Joes Brewery" tabs={["Evidence", "Friends", "Go"]}>
-        <div className="big-score"><span>86</span><small>confidence</small></div>
-        <div className="detail-block">
-          <strong>Recommendation: go now with your crew.</strong>
-          <p>AI weighs your saved bars, friends already moving, cover, and verified check-ins.</p>
+      </section>
+
+      <section className="trust-section">
+        <SectionIntro
+          label="Honest signals"
+          title="No reliable call is a feature, not a failure."
+          body="Pull Up should still be useful before it has campus-wide density. Early launch mode starts with official info, ambassadors, host facts, explicit student intent, and abstention when evidence is weak."
+        />
+        <div className="trust-grid">
+          <div className="signal-stack">
+            {signalHierarchy.map((signal, index) => (
+              <span key={signal}><b>{index + 1}</b>{signal}</span>
+            ))}
+          </div>
+          <div className="cold-start-grid">
+            {coldStartStages.map((stage) => (
+              <article key={stage.users}>
+                <strong>{stage.users}</strong>
+                <p>{stage.mode}</p>
+              </article>
+            ))}
+          </div>
         </div>
-        <div className="button-row">
-          <button>Going</button>
-          <button>Check in</button>
+      </section>
+
+      <section className="systems-section">
+        <SectionIntro
+          label="Trust machinery"
+          title="Hosts report facts. Admins protect the call."
+          body="The host and admin products support the student answer without letting any venue buy or force momentum."
+        />
+        <div className="surface-links">
+          <a href="/host"><strong>Host MVP</strong><span>Submit events, update cover and rules, report line and capacity.</span></a>
+          <a href="/admin"><strong>Admin console</strong><span>Review conflicting evidence, downweight bad reports, replay decisions.</span></a>
         </div>
+      </section>
+
+      <section className="auth-screen compact-auth">
+        <div className="auth-copy">
+          <p className="eyebrow">When sign-in matters</p>
+          <h2>Join plans only after Pull Up can protect your identity.</h2>
+          <p>
+            Sign-in unlocks friends, private intent, check-ins, venue follows,
+            hosting, and verified reports. Public visitors see only aggregate,
+            privacy-safe signals.
+          </p>
+        </div>
+        <AuthCard
+          email={email}
+          password={password}
+          accountType={accountType}
+          message={message}
+          loading={loading}
+          setEmail={setEmail}
+          setPassword={setPassword}
+          setAccountType={setAccountType}
+          signIn={signIn}
+          startDemo={startDemo}
+        />
+      </section>
+    </>
+  );
+}
+
+function AuthCard(props: {
+  email: string;
+  password: string;
+  accountType: AccountType;
+  message: string;
+  loading: boolean;
+  setEmail: (value: string) => void;
+  setPassword: (value: string) => void;
+  setAccountType: (value: AccountType) => void;
+  signIn: (mode: "signin" | "signup") => void;
+  startDemo: (role: AccountType) => void;
+}) {
+  return (
+    <form className="auth-card" onSubmit={(event) => event.preventDefault()}>
+      <div>
+        <p className="eyebrow">Account door</p>
+        <h2>Open your version</h2>
+      </div>
+      <label>
+        Email
+        <input value={props.email} onChange={(event) => props.setEmail(event.target.value)} />
+      </label>
+      <label>
+        Password
+        <input type="password" value={props.password} onChange={(event) => props.setPassword(event.target.value)} />
+      </label>
+      <label>
+        Demo role
+        <select value={props.accountType} onChange={(event) => props.setAccountType(event.target.value as AccountType)}>
+          <option value="student">Student</option>
+          <option value="host">Host org</option>
+          <option value="admin">Admin</option>
+        </select>
+      </label>
+      <div className="auth-actions">
+        <button type="button" onClick={() => props.signIn("signin")} disabled={props.loading}>Sign in</button>
+        <button type="button" onClick={() => props.signIn("signup")} disabled={props.loading}>Sign up</button>
+      </div>
+      <button className="ghost-button" type="button" onClick={() => props.startDemo(props.accountType)}>
+        Open demo {props.accountType} app
+      </button>
+      <p className="status-line">{props.message}</p>
+    </form>
+  );
+}
+
+function StudentApp({
+  auth,
+  planState,
+  onVenueAction,
+}: {
+  auth: AuthState;
+  planState: string;
+  onVenueAction: (action: string, venueName: string) => void;
+}) {
+  return (
+    <section className="mobile-product student-app">
+      <PhoneFrame audience="Student" title="Tonight" tabs={["Tonight", "Crew", "Plans"]}>
+        <TonightFeed onVenueAction={onVenueAction} />
       </PhoneFrame>
-      <PhoneFrame audience="Student" title={auth.displayName} tabs={["Profile", "Plans", "Crew"]}>
+      <PhoneFrame audience="Student" title="Crew plan" tabs={["Plan", "Invite", "Arrive"]}>
+        <div className="plan-hero">
+          <span>Joe&apos;s Brewery</span>
+          <h4>Go before 10:45</h4>
+          <p>Sarah, Maya, Dev, and Arjun are leaning here. Priya is watching KAMS.</p>
+        </div>
+        <div className="crew-list">
+          {["Sarah joined", "Maya says 10:30", "Dev needs 10 min", "Arjun wants cover confirmed"].map((item) => (
+            <span key={item}>{item}</span>
+          ))}
+        </div>
+        <div className="privacy-note">
+          Crew intent is private to invited friends. Hosts see only aggregate demand.
+        </div>
+        <button className="full-button" onClick={() => onVenueAction("Arrival window", "Joe's Brewery")}>Commit 10:30-10:45</button>
+        <p className="status-line">{planState}</p>
+      </PhoneFrame>
+      <PhoneFrame audience="Student" title={auth.displayName} tabs={["Profile", "Privacy", "Safety"]}>
         <div className="profile-top">
           <div className="avatar">{auth.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2)}</div>
           <div><strong>{auth.displayName}</strong><small>{auth.email}</small></div>
         </div>
-        <div className="profile-grid">
-          <span><b>12</b> nights out</span>
-          <span><b>8</b> trusted signals</span>
-          <span><b>5</b> crews</span>
-          <span><b>0</b> host trails</span>
+        <div className="settings-list">
+          <span><b>Crew</b> Quad Night, Friday regulars</span>
+          <span><b>Preferences</b> Bars, live music, low cover</span>
+          <span><b>Visibility</b> Friends see intent, not live trails</span>
+          <span><b>Notifications</b> Momentum changes and plan commits</span>
+          <span><b>Safety</b> Blocked users and report controls</span>
         </div>
         {auth.canHostUnofficial && <button className="full-button">Create unofficial party</button>}
       </PhoneFrame>
@@ -286,32 +433,99 @@ function StudentApp({ auth }: { auth: AuthState }) {
   );
 }
 
+function TonightFeed({
+  publicPreview = false,
+  onVenueAction,
+}: {
+  publicPreview?: boolean;
+  onVenueAction: (action: string, venueName: string) => void;
+}) {
+  return (
+    <>
+      <div className="search-pill">Champaign campus • Friday 9:15 PM</div>
+      <div className="feed-list">
+        {venues.map((venue) => (
+          <VenueCard
+            key={venue.name}
+            venue={venue}
+            publicPreview={publicPreview}
+            onVenueAction={onVenueAction}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+function VenueCard({
+  venue,
+  publicPreview,
+  onVenueAction,
+}: {
+  venue: Venue;
+  publicPreview: boolean;
+  onVenueAction: (action: string, venueName: string) => void;
+}) {
+  return (
+    <article className={`venue-card momentum-${venue.momentum}`}>
+      <div className="venue-main">
+        <div>
+          <strong>{venue.name}</strong>
+          <small>{venue.type} • {venue.walkTime}</small>
+        </div>
+        <span className={`state momentum-${venue.momentum}`}>{momentumCopy(venue.momentum)}</span>
+      </div>
+      <p>{venue.explanation}</p>
+      <div className="arrival-row">
+        <b>{venue.arrivalWindow}</b>
+        <span>{venue.updated}</span>
+      </div>
+      <div className="intent-line">
+        <span>{publicPreview ? "Friend context hidden until sign-in" : venue.crewIntent}</span>
+        <span>{venue.campusIntent}</span>
+      </div>
+      <div className="meta-row">
+        <span>{confidenceCopy(venue.confidence)}</span>
+        <span>{venue.cover}</span>
+        <span>{venue.line}</span>
+        <span>{venue.age}</span>
+      </div>
+      <div className="evidence-list">
+        {venue.evidence.map((item) => <span key={item}>{item}</span>)}
+      </div>
+      <button className="full-button" onClick={() => onVenueAction(venue.action, venue.name)}>{venue.action}</button>
+    </article>
+  );
+}
+
 function HostApp({ auth }: { auth: AuthState }) {
+  const unofficial = auth.accountType === "student";
   return (
     <section className="mobile-product host-app">
-      <PhoneFrame audience="Host" title={auth.accountType === "student" ? "Unofficial party" : "Joes ops"} tabs={["Home", "Events", "Reports"]}>
+      <PhoneFrame audience="Host" title={unofficial ? "Unofficial party" : "Tonight's event"} tabs={["Event", "Facts", "Status"]}>
         <div className="host-hero">
-          <p>Tonight event</p>
-          <h4>{auth.accountType === "student" ? "Apartment pregame" : "Friday Night at Joes"}</h4>
-          <span className="state rising">Organic rising</span>
+          <p>{unofficial ? "Student-hosted" : "Official venue listing"}</p>
+          <h4>{unofficial ? "Apartment pregame" : "Friday Night at Joe's"}</h4>
+          <span className="state momentum-rising">Submitted for review</span>
         </div>
-        <div className="metric-grid">
-          <span><b>91%</b> demand quality</span>
-          <span><b>78%</b> capacity pressure</span>
-          <span><b>42</b> verified arrivals</span>
-          <span><b>18</b> friend intents</span>
+        <div className="settings-list">
+          <span><b>Listing status</b> Awaiting Pull Up review</span>
+          <span><b>Host facts</b> Cover, timing, entry rules, specials</span>
+          <span><b>Allowed view</b> Aggregate demand only</span>
+          <span><b>Not allowed</b> Directly setting momentum</span>
         </div>
       </PhoneFrame>
-      <PhoneFrame audience="Host" title="Create event" tabs={["Draft", "Preview", "Submit"]}>
+      <PhoneFrame audience="Host" title="Submit event" tabs={["Draft", "Preview", "Submit"]}>
         <div className="form-stack">
-          <label>Event name<input defaultValue="Friday Night at Joes" /></label>
-          <label>Host type<select defaultValue={auth.accountType === "student" ? "house" : "bar"}><option value="bar">bar</option><option value="frat">frat</option><option value="house">house party</option></select></label>
+          <label>Event name<input defaultValue="Friday Night at Joe's" /></label>
+          <label>Host type<select defaultValue={unofficial ? "house" : "bar"}><option value="bar">bar</option><option value="frat">frat</option><option value="pub">pub</option><option value="house">house party</option></select></label>
           <label>Cover<input defaultValue="$5 after 10:30" /></label>
           <label>Age rule<input defaultValue="19+" /></label>
+          <label>Entry note<input defaultValue="IDs checked at door" /></label>
         </div>
         <button className="full-button">Submit to Pull Up review</button>
       </PhoneFrame>
-      <PhoneFrame audience="Host" title="Live report" tabs={["Line", "Capacity", "Send"]}>
+      <PhoneFrame audience="Host" title="Live facts" tabs={["Line", "Capacity", "Send"]}>
         <div className="report-stack">
           <button className="selected">Moving steadily</button>
           <button>Building fast</button>
@@ -319,7 +533,8 @@ function HostApp({ auth }: { auth: AuthState }) {
           <button>At capacity</button>
         </div>
         <div className="slider-card"><span>Capacity pressure</span><b>78%</b><div><i style={{ width: "78%" }} /></div></div>
-        <button className="full-button">Send operational note</button>
+        <div className="privacy-note">Reports are attributable and reviewable. They inform evidence but never directly set ranking.</div>
+        <button className="full-button">Send factual update</button>
       </PhoneFrame>
     </section>
   );
@@ -329,7 +544,7 @@ function AdminApp() {
   return (
     <section className="admin-app">
       <section className="admin-panel">
-        <div className="admin-heading"><p className="eyebrow">Queue</p><h3>Review workbench</h3></div>
+        <div className="admin-heading"><p className="eyebrow">Queue</p><h3>Needs a decision</h3></div>
         {adminQueue.map((item) => (
           <div className="admin-row" key={item.title}>
             <div><strong>{item.title}</strong><small>{item.venue} • {item.detail}</small></div>
@@ -338,16 +553,55 @@ function AdminApp() {
         ))}
       </section>
       <section className="admin-panel review-large">
-        <div className="admin-heading"><p className="eyebrow">Event review</p><h3>Murphys Pub</h3></div>
-        <div className="review-grid"><span><b>39</b> displayed confidence</span><span><b>35</b> replay score</span><span><b>27m</b> signal age</span><span><b>High</b> privacy review</span></div>
-        <div className="ledger"><span>Host report <b>line building</b></span><span>Verified arrivals <b>6 stale</b></span><span>Ambassador report <b>conflict</b></span></div>
-        <div className="button-row"><button>Keep abstained</button><button>Escalate</button></div>
+        <div className="admin-heading"><p className="eyebrow">Evidence replay</p><h3>The Red Lion</h3></div>
+        <div className="review-grid">
+          <span><b>No call</b> student-facing state</span>
+          <span><b>Low</b> signal confidence</span>
+          <span><b>31m</b> report age</span>
+          <span><b>High</b> manipulation risk</span>
+        </div>
+        <div className="ledger">
+          <span>Host report <b>line building</b></span>
+          <span>Verified arrivals <b>too sparse</b></span>
+          <span>Ambassador report <b>missing</b></span>
+          <span>Decision effect <b>keep abstained</b></span>
+        </div>
+        <div className="button-row"><button>Keep abstained</button><button>Downweight host report</button></div>
       </section>
       <section className="admin-panel">
-        <div className="admin-heading"><p className="eyebrow">Backend running model</p><h3>What powers the screens</h3></div>
-        <div className="backend-map"><span>supabase.auth.users → verified identity</span><span>profiles.account_type → student / host / admin</span><span>profiles.can_host_unofficial → student party host</span><span>moderation_reviews → admin-only decisions</span><span>ai/recommendations → privacy-safe assistant</span></div>
+        <div className="admin-heading"><p className="eyebrow">Source pattern</p><h3>Reporter reliability</h3></div>
+        <div className="backend-map">
+          <span>Host facts accepted when they match independent evidence.</span>
+          <span>Repeated overstatements lower future report weight.</span>
+          <span>Approved changes can be replayed before students see them.</span>
+          <span>Weak evidence publishes as no reliable call.</span>
+        </div>
       </section>
     </section>
+  );
+}
+
+function SectionIntro({ label, title, body }: { label: string; title: string; body: string }) {
+  return (
+    <div className="surface-copy">
+      <p className="eyebrow">{label}</p>
+      <h2>{title}</h2>
+      <p>{body}</p>
+    </div>
+  );
+}
+
+function AppHeader({ auth, onSignOut }: { auth: AuthState; onSignOut: () => void }) {
+  return (
+    <header className="top-bar">
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+      <a className="brand" href="/">Pull Up</a>
+      <div>
+        <span>{auth.displayName}</span>
+        <small>{auth.accountType}{auth.isDemo ? " demo" : ""}</small>
+      </div>
+      <button onClick={onSignOut}>Sign out</button>
+    </header>
   );
 }
 

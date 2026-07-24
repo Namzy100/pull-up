@@ -5,9 +5,10 @@ import test from "node:test";
 const templateRoot = new URL("../", import.meta.url);
 
 test("defines the mobile Pull Up product shell", async () => {
-  const [page, app, student, host, admin, layout, css] = await Promise.all([
+  const [page, app, data, student, host, admin, layout, css] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/PullUpClientApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/pull-up-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/student/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/host/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
@@ -17,21 +18,31 @@ test("defines the mobile Pull Up product shell", async () => {
 
   assert.match(layout, /title:\s*"Pull Up"/);
   assert.match(page, /PullUpClientApp/);
-  assert.match(app, /Sign in, then land in exactly one nightlife app\./);
+  assert.match(app, /Know where campus is actually going tonight\./);
+  assert.match(app, /Stop guessing from group chats/);
+  assert.match(app, /Preview tonight without signing in/);
+  assert.match(data, /Joe's Brewery/);
+  assert.match(data, /The Red Lion/);
+  assert.match(data, /Murphy's Pub/);
+  assert.match(data, /No reliable call/);
+  assert.match(app, /Go before 10:45/);
+  assert.match(data, /4 friends leaning here/);
+  assert.match(data, /High confidence/);
+  assert.match(app, /One decision, four moments\./);
+  assert.match(app, /Hosts report facts\. Admins protect the call\./);
   assert.match(app, /Access blocked/);
   assert.match(app, /requiredRole === "host" && auth\.accountType === "student" && auth\.canHostUnofficial/);
-  assert.match(app, /Student app/);
-  assert.match(app, /Host app/);
-  assert.match(app, /Admin app/);
   assert.match(app, /Create unofficial party/);
-  assert.match(app, /Review workbench/);
+  assert.match(app, /Needs a decision/);
   assert.match(app, /Submit to Pull Up review/);
   assert.match(student, /requiredRole="student"/);
   assert.match(host, /requiredRole="host"/);
   assert.match(admin, /requiredRole="admin"/);
   assert.match(css, /\.phone-frame/);
-  assert.match(css, /\.auth-screen/);
+  assert.match(css, /\.student-hero/);
+  assert.match(css, /\.journey-grid/);
   assert.match(css, /\.admin-app/);
+  assert.doesNotMatch(app, /supabase\.auth\.users|host trails|Trusted signals/);
   assert.doesNotMatch(app, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
 
