@@ -25,9 +25,12 @@ test("defines the mobile Pull Up product shell", async () => {
   assert.match(data, /The Red Lion/);
   assert.match(data, /Murphy's Pub/);
   assert.match(data, /No reliable call/);
-  assert.match(app, /Commit \{ARRIVAL_WINDOW\}/);
+  assert.match(app, /student-shell/);
+  assert.match(app, /student-bottom-nav/);
+  assert.match(app, /Commit arrival time/);
   assert.match(app, /Report conditions/);
   assert.match(app, /Plan history/);
+  assert.match(app, /Mocked signal data/);
   assert.match(data, /4 friends leaning here/);
   assert.match(data, /High confidence/);
   assert.match(app, /One decision, four moments\./);
@@ -40,6 +43,8 @@ test("defines the mobile Pull Up product shell", async () => {
   assert.match(app, /Create unofficial party/);
   assert.match(app, /Needs a decision/);
   assert.match(app, /Submit to Pull Up review/);
+  assert.doesNotMatch(app, /PhoneFrame audience="Student"/);
+  assert.doesNotMatch(app, /mobile-product student-app/);
   assert.match(student, /requiredRole="student"/);
   assert.match(host, /requiredRole="host"/);
   assert.match(admin, /requiredRole="admin"/);
