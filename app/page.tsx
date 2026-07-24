@@ -251,8 +251,9 @@ export default function Home() {
   const currentRole = roleCopy(role);
 
   return (
-    <main>
-      <section className="top-shell">
+    <main className="phone-stage">
+      <div className="phone-shell">
+        <section className="top-shell">
         <nav className="nav-bar" aria-label="Primary">
           <div>
             <p className="eyebrow">UIUC closed beta</p>
@@ -272,7 +273,7 @@ export default function Home() {
           </div>
         </nav>
 
-        <div className="hero-grid">
+        <div className="hero-grid phone-hero">
           <div className="hero-copy">
             <p className="contract">{currentRole.eyebrow}</p>
             <h2>{currentRole.title}</h2>
@@ -542,6 +543,21 @@ export default function Home() {
           </aside>
         </section>
       )}
+
+        <footer className="bottom-tabs" aria-label="Phone role navigation">
+          {(["user", "host", "admin"] as Role[]).map((nextRole) => (
+            <button
+              className={role === nextRole ? "active" : ""}
+              key={nextRole}
+              onClick={() => setRole(nextRole)}
+              type="button"
+            >
+              <span>{nextRole === "user" ? "Tonight" : nextRole === "host" ? "Host" : "Admin"}</span>
+              <small>{nextRole === "user" ? "go" : nextRole === "host" ? "post" : "review"}</small>
+            </button>
+          ))}
+        </footer>
+      </div>
     </main>
   );
 }

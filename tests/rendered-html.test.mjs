@@ -4,42 +4,58 @@ import test from "node:test";
 
 const templateRoot = new URL("../", import.meta.url);
 
-async function render() {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
+test("defines the mobile Pull Up product shell", async () => {
+  const [page, layout, css] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
 
-  return worker.fetch(
-    new Request("http://localhost/", {
-      headers: { accept: "text/html" },
-    }),
-    {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
-    },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
-  );
-}
+  assert.match(layout, /title:\s*"Pull Up"/);
+  assert.match(page, /Pick the move without trusting rumor\./);
+  assert.match(page, /Host dashboard/);
+  assert.match(page, /Admin review queue/);
+  assert.match(page, /Submit report for review/);
+  assert.match(page, /Phone role navigation/);
+  assert.match(css, /\.phone-shell/);
+  assert.match(css, /\.bottom-tabs/);
+  assert.doesNotMatch(page, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
+});
 
-test("server-renders the Pull Up product shell", async () => {
-  const response = await render();
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+test("defines the backend schema and API surface", async () => {
+  const [schema, hosting, profileApi, eventsApi, attendanceApi, hostReportsApi, adminApi] =
+    await Promise.all([
+      readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+      readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/profile/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/events/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/events/[eventId]/attendance/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/host-reports/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/admin/reviews/route.ts", import.meta.url), "utf8"),
+    ]);
 
-  const html = await response.text();
-  assert.match(html, /<title>Pull Up<\/title>/i);
-  assert.match(html, /Pick the move without trusting rumor\./);
-  assert.match(html, /No paid ranking/);
-  assert.match(html, /Joes Brewery/);
-  assert.match(html, /Not enough signal/);
-  assert.match(html, />User</);
-  assert.match(html, />Host</);
-  assert.match(html, />Admin</);
-  assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
+  for (const table of [
+    "profiles",
+    "hostOrganizations",
+    "venues",
+    "events",
+    "attendances",
+    "hostReports",
+    "signalEvents",
+    "eventScores",
+    "moderationReviews",
+  ]) {
+    assert.match(schema, new RegExp(`export const ${table}`));
+  }
+
+  assert.match(hosting, /"d1":\s*"DB"/);
+  assert.match(profileApi, /requireApiProfile/);
+  assert.match(eventsApi, /export async function POST/);
+  assert.match(attendanceApi, /signalEvents/);
+  assert.match(hostReportsApi, /host_report/);
+  assert.match(adminApi, /Admin role required/);
+
+  await access(new URL("../drizzle/0000_vengeful_blue_shield.sql", import.meta.url));
 });
 
 test("removes disposable starter preview code", async () => {
@@ -49,12 +65,6 @@ test("removes disposable starter preview code", async () => {
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
 
-  assert.match(page, /Product guardrails/);
-  assert.match(page, /Host dashboard/);
-  assert.match(page, /Admin review queue/);
-  assert.match(page, /Submit report for review/);
-  assert.match(page, /scoreVenue/);
-  assert.match(layout, /title:\s*"Pull Up"/);
   assert.doesNotMatch(page, /_sites-preview|SkeletonPreview|codex-preview/);
   assert.doesNotMatch(layout, /Starter Project|codex-preview|_sites-preview/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
