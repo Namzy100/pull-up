@@ -1,6 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { moderationReviews, profiles } from "../../../../db/schema";
+import { moderationReviews } from "../../../../db/schema";
 import { jsonError, requireApiProfile, routeError } from "../../_lib";
 
 export async function GET() {

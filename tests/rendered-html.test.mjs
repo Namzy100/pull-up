@@ -25,7 +25,7 @@ test("defines the mobile Pull Up product shell", async () => {
   assert.match(data, /The Red Lion/);
   assert.match(data, /Murphy's Pub/);
   assert.match(data, /No reliable call/);
-  assert.match(app, /Go before 10:45/);
+  assert.match(data, /Go before 10:45/);
   assert.match(data, /4 friends leaning here/);
   assert.match(data, /High confidence/);
   assert.match(app, /One decision, four moments\./);
@@ -35,6 +35,11 @@ test("defines the mobile Pull Up product shell", async () => {
   assert.match(app, /Create unofficial party/);
   assert.match(app, /Needs a decision/);
   assert.match(app, /Submit to Pull Up review/);
+  assert.match(app, /Friday night, start to finish\./);
+  assert.match(app, /Make this the move/);
+  assert.match(app, /Create plan/);
+  assert.match(app, /I’m here/);
+  assert.match(app, /Send verified update/);
   assert.match(student, /requiredRole="student"/);
   assert.match(host, /requiredRole="host"/);
   assert.match(admin, /requiredRole="admin"/);
@@ -47,7 +52,7 @@ test("defines the mobile Pull Up product shell", async () => {
 });
 
 test("defines the backend schema and API surface", async () => {
-  const [schema, supabaseSchema, envExample, profileApi, eventsApi, attendanceApi, hostReportsApi, adminApi, aiApi, authConfigApi] =
+  const [schema, supabaseSchema, envExample, profileApi, eventsApi, attendanceApi, plansApi, reportsApi, hostReportsApi, adminApi, aiApi, authConfigApi] =
     await Promise.all([
       readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
       readFile(new URL("../supabase/schema.sql", import.meta.url), "utf8"),
@@ -55,6 +60,8 @@ test("defines the backend schema and API surface", async () => {
       readFile(new URL("../app/api/supabase/profile/route.ts", import.meta.url), "utf8"),
       readFile(new URL("../app/api/supabase/events/route.ts", import.meta.url), "utf8"),
       readFile(new URL("../app/api/supabase/attendance/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/supabase/plans/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/supabase/reports/route.ts", import.meta.url), "utf8"),
       readFile(new URL("../app/api/supabase/host/reports/route.ts", import.meta.url), "utf8"),
       readFile(new URL("../app/api/supabase/admin/reviews/route.ts", import.meta.url), "utf8"),
       readFile(new URL("../app/api/ai/recommendations/route.ts", import.meta.url), "utf8"),
@@ -85,6 +92,9 @@ test("defines the backend schema and API surface", async () => {
   assert.match(eventsApi, /export async function POST/);
   assert.match(eventsApi, /can_host_unofficial/);
   assert.match(attendanceApi, /signal_events/);
+  assert.match(plansApi, /plan_members/);
+  assert.match(reportsApi, /crowd_reports/);
+  assert.match(supabaseSchema, /create table if not exists public\.plans/);
   assert.match(hostReportsApi, /host_report/);
   assert.match(adminApi, /requireProfile\(request, \["admin"\]\)/);
   assert.match(aiApi, /OPENAI_API_KEY/);

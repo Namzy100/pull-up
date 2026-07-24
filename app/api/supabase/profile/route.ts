@@ -25,9 +25,10 @@ export async function POST(request: Request) {
     }
 
     const [profile] = await supabaseRest(
-      "profiles",
+      "profiles?on_conflict=user_id",
       {
         method: "POST",
+        headers: { prefer: "resolution=merge-duplicates,return=representation" },
         body: JSON.stringify({
           user_id: user.id,
           email: user.email ?? "",

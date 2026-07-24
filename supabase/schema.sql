@@ -94,6 +94,63 @@ create table if not exists public.attendances (
   unique (event_id, user_id)
 );
 
+create table if not exists public.crews (
+  id uuid primary key default gen_random_uuid(),
+  campus_id text not null default 'uiuc',
+  name text not null,
+  created_by_user_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.crew_members (
+  crew_id uuid not null references public.crews(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role text not null default 'member' check (role in ('owner', 'member')),
+  status text not null default 'active' check (status in ('invited', 'active', 'left')),
+  joined_at timestamptz not null default now(),
+  primary key (crew_id, user_id)
+);
+
+create table if not exists public.plans (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  crew_id uuid references public.crews(id) on delete set null,
+  created_by_user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  arrival_window_start timestamptz,
+  arrival_window_end timestamptz,
+  status text not null default 'proposed'
+    check (status in ('proposed', 'committed', 'active', 'completed', 'cancelled')),
+  visibility text not null default 'invite_only'
+    check (visibility in ('invite_only', 'friends_of_friends')),
+  note text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.plan_members (
+  plan_id uuid not null references public.plans(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  response text not null default 'invited'
+    check (response in ('invited', 'interested', 'going', 'declined')),
+  eta_minutes integer,
+  joined_at timestamptz not null default now(),
+  primary key (plan_id, user_id)
+);
+
+create table if not exists public.crowd_reports (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  submitted_by_user_id uuid not null references auth.users(id) on delete cascade,
+  line_state text check (line_state in ('none', 'short', 'moderate', 'long', 'at_capacity')),
+  cover text,
+  crowd_state text check (crowd_state in ('quiet', 'filling', 'busy', 'packed')),
+  note text not null default '',
+  verification_method text not null default 'self_report'
+    check (verification_method in ('self_report', 'proximity', 'ambassador', 'admin')),
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.host_reports (
   id uuid primary key default gen_random_uuid(),
   event_id uuid not null references public.events(id) on delete cascade,
@@ -151,6 +208,10 @@ create index if not exists events_campus_status_idx on public.events(campus_id, 
 create index if not exists events_starts_at_idx on public.events(starts_at);
 create index if not exists attendances_user_idx on public.attendances(user_id);
 create index if not exists attendances_event_idx on public.attendances(event_id);
+create index if not exists crew_members_user_idx on public.crew_members(user_id);
+create index if not exists plans_event_idx on public.plans(event_id);
+create index if not exists plan_members_user_idx on public.plan_members(user_id);
+create index if not exists crowd_reports_event_idx on public.crowd_reports(event_id, created_at desc);
 create index if not exists signals_event_idx on public.signal_events(event_id);
 create index if not exists moderation_status_idx on public.moderation_reviews(status);
 
@@ -160,6 +221,11 @@ alter table public.organization_members enable row level security;
 alter table public.venues enable row level security;
 alter table public.events enable row level security;
 alter table public.attendances enable row level security;
+alter table public.crews enable row level security;
+alter table public.crew_members enable row level security;
+alter table public.plans enable row level security;
+alter table public.plan_members enable row level security;
+alter table public.crowd_reports enable row level security;
 alter table public.host_reports enable row level security;
 alter table public.signal_events enable row level security;
 alter table public.event_scores enable row level security;
@@ -228,6 +294,59 @@ create policy "attendance own rows"
 on public.attendances for all to authenticated
 using ((select auth.uid()) = user_id or public.is_admin())
 with check ((select auth.uid()) = user_id or public.is_admin());
+
+drop policy if exists "crew members can read crews" on public.crews;
+create policy "crew members can read crews"
+on public.crews for select to authenticated
+using (
+  created_by_user_id = (select auth.uid())
+  or exists (select 1 from public.crew_members m where m.crew_id = id and m.user_id = auth.uid())
+  or public.is_admin()
+);
+
+drop policy if exists "users create crews" on public.crews;
+create policy "users create crews"
+on public.crews for insert to authenticated
+with check (created_by_user_id = (select auth.uid()));
+
+drop policy if exists "crew membership visible to crew" on public.crew_members;
+create policy "crew membership visible to crew"
+on public.crew_members for select to authenticated
+using (
+  user_id = (select auth.uid())
+  or exists (select 1 from public.crew_members mine where mine.crew_id = crew_id and mine.user_id = auth.uid())
+  or public.is_admin()
+);
+
+drop policy if exists "plan members can read plans" on public.plans;
+create policy "plan members can read plans"
+on public.plans for select to authenticated
+using (
+  created_by_user_id = (select auth.uid())
+  or exists (select 1 from public.plan_members m where m.plan_id = id and m.user_id = auth.uid())
+  or public.is_admin()
+);
+
+drop policy if exists "users create plans" on public.plans;
+create policy "users create plans"
+on public.plans for insert to authenticated
+with check (created_by_user_id = (select auth.uid()));
+
+drop policy if exists "plan members manage own response" on public.plan_members;
+create policy "plan members manage own response"
+on public.plan_members for all to authenticated
+using (user_id = (select auth.uid()) or public.is_admin())
+with check (user_id = (select auth.uid()) or public.is_admin());
+
+drop policy if exists "students create crowd reports" on public.crowd_reports;
+create policy "students create crowd reports"
+on public.crowd_reports for insert to authenticated
+with check (submitted_by_user_id = (select auth.uid()));
+
+drop policy if exists "crowd reports admin read" on public.crowd_reports;
+create policy "crowd reports admin read"
+on public.crowd_reports for select to authenticated
+using (submitted_by_user_id = (select auth.uid()) or public.is_admin());
 
 drop policy if exists "host reports by org or admin" on public.host_reports;
 create policy "host reports by org or admin"
