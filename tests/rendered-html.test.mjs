@@ -12,13 +12,16 @@ test("defines the mobile Pull Up product shell", async () => {
   ]);
 
   assert.match(layout, /title:\s*"Pull Up"/);
-  assert.match(page, /Pick the move without trusting rumor\./);
-  assert.match(page, /Host dashboard/);
-  assert.match(page, /Admin review queue/);
-  assert.match(page, /Submit report for review/);
-  assert.match(page, /Phone role navigation/);
-  assert.match(css, /\.phone-shell/);
-  assert.match(css, /\.bottom-tabs/);
+  assert.match(page, /Three apps, one nightlife signal layer\./);
+  assert.match(page, /Student mobile app/);
+  assert.match(page, /Host mobile app/);
+  assert.match(page, /Admin review console/);
+  assert.match(page, /Find the move, coordinate, check in\./);
+  assert.match(page, /Joes ops/);
+  assert.match(page, /Review workbench/);
+  assert.match(page, /Submit to Pull Up review/);
+  assert.match(css, /\.phone-frame/);
+  assert.match(css, /\.admin-layout/);
   assert.doesNotMatch(page, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
 });
 
