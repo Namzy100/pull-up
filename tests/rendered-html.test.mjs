@@ -13,9 +13,11 @@ test("defines the mobile Pull Up product shell", async () => {
 
   assert.match(layout, /title:\s*"Pull Up"/);
   assert.match(page, /Three apps, one nightlife signal layer\./);
+  assert.match(page, /Separate doors, shared data spine\./);
   assert.match(page, /Student mobile app/);
   assert.match(page, /Host mobile app/);
   assert.match(page, /Admin review console/);
+  assert.match(page, /Enable unofficial hosting/);
   assert.match(page, /Find the move, coordinate, check in\./);
   assert.match(page, /Joes ops/);
   assert.match(page, /Review workbench/);
@@ -26,15 +28,17 @@ test("defines the mobile Pull Up product shell", async () => {
 });
 
 test("defines the backend schema and API surface", async () => {
-  const [schema, hosting, profileApi, eventsApi, attendanceApi, hostReportsApi, adminApi] =
+  const [schema, supabaseSchema, envExample, profileApi, eventsApi, attendanceApi, hostReportsApi, adminApi, aiApi] =
     await Promise.all([
       readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
-      readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
-      readFile(new URL("../app/api/profile/route.ts", import.meta.url), "utf8"),
-      readFile(new URL("../app/api/events/route.ts", import.meta.url), "utf8"),
-      readFile(new URL("../app/api/events/[eventId]/attendance/route.ts", import.meta.url), "utf8"),
-      readFile(new URL("../app/api/host-reports/route.ts", import.meta.url), "utf8"),
-      readFile(new URL("../app/api/admin/reviews/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/schema.sql", import.meta.url), "utf8"),
+      readFile(new URL("../.env.example", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/supabase/profile/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/supabase/events/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/supabase/attendance/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/supabase/host/reports/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/supabase/admin/reviews/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/ai/recommendations/route.ts", import.meta.url), "utf8"),
     ]);
 
   for (const table of [
@@ -51,12 +55,20 @@ test("defines the backend schema and API surface", async () => {
     assert.match(schema, new RegExp(`export const ${table}`));
   }
 
-  assert.match(hosting, /"d1":\s*"DB"/);
-  assert.match(profileApi, /requireApiProfile/);
+  assert.match(supabaseSchema, /enable row level security/);
+  assert.match(supabaseSchema, /account_type in \('student', 'host', 'admin'\)/);
+  assert.match(supabaseSchema, /can_host_unofficial boolean/);
+  assert.match(supabaseSchema, /public\.is_admin\(\)/);
+  assert.match(envExample, /SUPABASE_URL/);
+  assert.match(envExample, /OPENAI_API_KEY/);
+  assert.match(profileApi, /requireSupabaseUser/);
   assert.match(eventsApi, /export async function POST/);
-  assert.match(attendanceApi, /signalEvents/);
+  assert.match(eventsApi, /can_host_unofficial/);
+  assert.match(attendanceApi, /signal_events/);
   assert.match(hostReportsApi, /host_report/);
-  assert.match(adminApi, /Admin role required/);
+  assert.match(adminApi, /requireProfile\(request, \["admin"\]\)/);
+  assert.match(aiApi, /OPENAI_API_KEY/);
+  assert.match(aiApi, /store: false/);
 
   await access(new URL("../drizzle/0000_vengeful_blue_shield.sql", import.meta.url));
 });

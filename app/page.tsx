@@ -99,10 +99,28 @@ const adminQueue: AdminItem[] = [
 ];
 
 const productLayers = [
-  "Auth: ChatGPT/Sites identity now; app-owned auth later for native public release.",
-  "Data: D1 tables for profiles, host orgs, venues, events, attendance, reports, signals, scores, reviews.",
-  "APIs: profile, event creation, attendance/check-in, host reports, admin review decisions.",
-  "Trust: hosts submit facts, students contribute intent, admins decide ranking/abstention.",
+  "Auth: Supabase Auth verifies every student, host org, and admin session.",
+  "Access: admins never see student/host UX; host orgs never see student trails.",
+  "Student hosting: students can opt into unofficial party hosting without becoming a pub/frat account.",
+  "AI: server-only recommendation assistant uses approved events and privacy-safe profile preferences.",
+];
+
+const accessRules = [
+  {
+    role: "Student",
+    scope: "Tonight, friends, profile, attendance, optional unofficial party hosting.",
+    denied: "No admin queue. No host aggregate dashboard unless they create an unofficial event.",
+  },
+  {
+    role: "Host org",
+    scope: "Pub, frat, bar, club, or org account for events, reports, demand quality.",
+    denied: "No individual student movement, private attendance, or admin decisions.",
+  },
+  {
+    role: "Admin",
+    scope: "Review queue, score replay, moderation, account verification, safety controls.",
+    denied: "No consumer Tonight app. No pretending to be a student or host in the same session.",
+  },
 ];
 
 function stateCopy(state: VenueState) {
@@ -138,6 +156,23 @@ export default function Home() {
               <span key={layer}>{layer}</span>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="access-section">
+        <SurfaceCopy
+          label="Authentication and privacy"
+          title="Separate doors, shared data spine."
+          body="The backend now models account type as an authorization boundary. Students, host organizations, and admins can share the same event graph without sharing the same screens or private data."
+        />
+        <div className="access-grid">
+          {accessRules.map((rule) => (
+            <article className="access-card" key={rule.role}>
+              <h3>{rule.role}</h3>
+              <p>{rule.scope}</p>
+              <small>{rule.denied}</small>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -293,6 +328,7 @@ function StudentProfile() {
       <div className="privacy-note">
         Precise location expires quickly. Friends see intent; hosts only see aggregate demand.
       </div>
+      <button className="full-button">Enable unofficial hosting</button>
     </PhoneFrame>
   );
 }
@@ -405,11 +441,12 @@ function AdminBackend() {
         <h3>What powers the screens</h3>
       </div>
       <div className="backend-map">
-        <span>profiles → auth identity</span>
-        <span>events → host submissions</span>
-        <span>attendances → student intent</span>
-        <span>signal_events → score replay</span>
-        <span>moderation_reviews → admin decisions</span>
+        <span>supabase.auth.users → verified identity</span>
+        <span>profiles.account_type → student / host / admin</span>
+        <span>profiles.can_host_unofficial → student party host</span>
+        <span>host_organizations → pubs, bars, frats, orgs</span>
+        <span>moderation_reviews → admin-only decisions</span>
+        <span>ai/recommendations → privacy-safe assistant</span>
       </div>
     </section>
   );
