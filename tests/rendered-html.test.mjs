@@ -30,7 +30,9 @@ test("defines the mobile Pull Up product shell", async () => {
   assert.match(app, /Commit arrival time/);
   assert.match(app, /Report conditions/);
   assert.match(app, /Plan history/);
-  assert.match(app, /Mocked signal data/);
+  assert.match(app, /Prototype night · sample activity/);
+  assert.match(app, /What&apos;s the move\?/);
+  assert.match(app, /4 friends leaning here/);
   assert.match(data, /4 friends leaning here/);
   assert.match(data, /High confidence/);
   assert.match(app, /One decision, four moments\./);

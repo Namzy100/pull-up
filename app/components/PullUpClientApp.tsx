@@ -485,7 +485,9 @@ function StudentApp({ auth, onSignOut }: { auth: AuthState; onSignOut: () => voi
   const [busyAction, setBusyAction] = useState<string | null>(null);
 
   const selectedEvent = events.find((event) => event.id === selectedEventId) ?? events[0] ?? null;
-  const selectedName = selectedEvent?.title ?? selectedMockVenue?.name ?? "Tonight";
+  const featuredVenue = venues[0];
+  const activeVenue = selectedMockVenue ?? featuredVenue;
+  const selectedName = activeVenue.name;
   const canPersist = !auth.isDemo && Boolean(selectedEvent);
   const latestStatus = history.find((item) => item.event_id === selectedEvent?.id)?.status ?? history[0]?.status ?? "none";
   const headerTitle =
@@ -503,7 +505,7 @@ function StudentApp({ auth, onSignOut }: { auth: AuthState; onSignOut: () => voi
     let cancelled = false;
     async function loadStudentData() {
       if (auth.isDemo) {
-        setStudentStatus("Demo account: mocked data is visible, but Supabase writes require a real student sign-in.");
+        setStudentStatus("Prototype night · sample activity");
         return;
       }
       try {
@@ -516,7 +518,7 @@ function StudentApp({ auth, onSignOut }: { auth: AuthState; onSignOut: () => voi
         setEvents(liveEvents);
         setHistory(historyResult.attendances);
         setSelectedEventId(liveEvents[0]?.id ?? null);
-        setStudentStatus(liveEvents.length > 0 ? "Live events loaded." : "No live Supabase events yet. Mocked signal cards are labeled below.");
+        setStudentStatus(liveEvents.length > 0 ? "Prototype night · sample activity" : "Prototype night · sample activity");
       } catch {
         if (!cancelled) setStudentStatus("Could not load your persisted plans. Try signing out and back in.");
       }
@@ -536,7 +538,7 @@ function StudentApp({ auth, onSignOut }: { auth: AuthState; onSignOut: () => voi
   async function persistAttendance(action: string, status: "interested" | "going" | "arrived", nextFlow: StudentFlow, eventOverride?: LiveEvent) {
     const targetEvent = eventOverride ?? selectedEvent;
     if (auth.isDemo || !targetEvent) {
-      setStudentStatus("Choose a live event to save this step to Supabase. Mocked signal cards are read-only.");
+      setStudentStatus("Sign in with a student account to save this plan for tonight.");
       return;
     }
     setBusyAction(action);
@@ -564,7 +566,7 @@ function StudentApp({ auth, onSignOut }: { auth: AuthState; onSignOut: () => voi
 
   async function reportConditions() {
     if (auth.isDemo || !selectedEvent) {
-      setStudentStatus("Choose a live event before reporting conditions. Mocked signal cards are read-only.");
+      setStudentStatus("Sign in with a student account to report conditions for tonight.");
       return;
     }
     setBusyAction("Report conditions");
@@ -590,111 +592,140 @@ function StudentApp({ auth, onSignOut }: { auth: AuthState; onSignOut: () => voi
     }
   }
 
-  function openLiveEvent(event: LiveEvent) {
-    setSelectedEventId(event.id);
-    setSelectedMockVenue(null);
-    setFlow("details");
-    setView("tonight");
-  }
-
   function openMockVenue(venue: Venue) {
     setSelectedMockVenue(venue);
     setFlow("details");
     setView("tonight");
-    setStudentStatus("This card uses mocked signal data. Pick a live event above to save actions.");
+    setStudentStatus("Prototype night · sample activity");
   }
 
   function goToView(nextView: StudentView) {
     setView(nextView);
-    if (nextView === "tonight") setFlow(selectedEvent || selectedMockVenue ? "details" : "tonight");
+    if (nextView === "tonight") setFlow("tonight");
     if (nextView === "crew") setFlow(flow === "invite" || flow === "commit" ? flow : "invite");
     if (nextView === "plans") setFlow("history");
     if (nextView === "profile") setFlow("history");
   }
 
   return (
-    <section className="student-shell" data-view={view}>
-      <header className="student-shell-header">
+    <section className="student-shell student-shell-night" data-view={view}>
+      <header className="student-shell-header night-header">
         <div>
-          <p>{view === "tonight" ? "UIUC Tonight" : view === "crew" ? "Crew" : view === "plans" ? "Plans" : "Profile"}</p>
+          <p>{view === "tonight" ? "Friday night" : view === "crew" ? "Crew" : view === "plans" ? "Plans" : "Profile"}</p>
           <h1>{headerTitle}</h1>
         </div>
-        <div className="student-header-actions">
-          <span className="student-status-chip">{latestStatus}</span>
-          <button onClick={onSignOut}>Sign out</button>
-        </div>
+        <span className="prototype-chip">Prototype night · sample activity</span>
       </header>
 
       <div className="student-shell-content">
         {view === "tonight" && flow === "tonight" && (
-          <section className="single-view">
-            <div className="search-pill">Champaign campus • Friday 9:15 PM</div>
-            {events.length > 0 ? (
-              <div className="feed-list">
-                {events.map((event) => (
-                  <button className={`live-event-row ${event.id === selectedEventId ? "selected" : ""}`} key={event.id} onClick={() => openLiveEvent(event)}>
-                    <span>Live</span>
-                    <strong>{event.title}</strong>
-                    <small>{event.event_type.replace("_", " ")} • {new Date(event.starts_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} • {event.cover}</small>
+          <section className="tonight-stage">
+            <div className="tonight-main">
+              <div className="move-hero">
+                <div className="move-hero-top">
+                  <div>
+                    <span className="night-kicker">What&apos;s the move?</span>
+                    <h2>Joe&apos;s</h2>
+                  </div>
+                  <div className="momentum-orbit" aria-label="Building fast momentum">
+                    <i /><i /><i />
+                  </div>
+                </div>
+                <div className="move-state">
+                  <span>Building fast</span>
+                  <strong>Go before 10:45</strong>
+                </div>
+                <div className="friend-pulse">
+                  <div className="avatar-stack" aria-label="Friends leaning here">
+                    {["SP", "MK", "DR", "+1"].map((friend) => <span key={friend}>{friend}</span>)}
+                  </div>
+                  <div>
+                    <b>4 friends leaning here</b>
+                    <small>Sarah&apos;s crew is warming up the plan</small>
+                  </div>
+                </div>
+                <div className="signal-split">
+                  <span><b>Strong signal</b><small>High confidence</small></span>
+                  <span><b>Updated 4 min ago</b><small>Fresh enough to act</small></span>
+                  <span><b>$5 cover · 19+</b><small>8 min walk</small></span>
+                </div>
+                <div className="hero-action-row">
+                  <button className="full-button" onClick={() => openMockVenue(featuredVenue)}>See the move</button>
+                  <button className="secondary-button" disabled={!canPersist} onClick={() => { setSelectedMockVenue(featuredVenue); setFlow("create"); }}>Start a plan</button>
+                </div>
+              </div>
+
+              <div className="venue-lane" aria-label="Other campus options">
+                {venues.slice(1).map((venue) => (
+                  <button className={`venue-strip momentum-${venue.momentum}`} key={venue.name} onClick={() => openMockVenue(venue)}>
+                    <span className="signal-dot" />
+                    <div>
+                      <strong>{venue.name}</strong>
+                      <small>{venue.momentum === "steady" ? "Steady" : venue.momentum === "quiet" ? "Quiet right now" : "No reliable call yet"}</small>
+                    </div>
+                    <em>{venue.arrivalWindow}</em>
                   </button>
                 ))}
               </div>
-            ) : (
-              <div className="empty-state">
-                <strong>No live Supabase events yet</strong>
-                <span>Mocked signal cards below are for product context only.</span>
-              </div>
-            )}
-            <div className="mock-label">Mocked signal data</div>
-            <div className="feed-list">
-              {venues.map((venue) => (
-                <button className={`mock-venue-row momentum-${venue.momentum}`} key={venue.name} onClick={() => openMockVenue(venue)}>
-                  <div>
-                    <strong>{venue.name}</strong>
-                    <small>{venue.type} • {venue.walkTime}</small>
-                  </div>
-                  <span className={`state momentum-${venue.momentum}`}>{momentumCopy(venue.momentum)}</span>
-                  <p>{venue.explanation}</p>
-                </button>
-              ))}
             </div>
+
+            <aside className="tonight-side">
+              <div className="crew-card lively">
+                <span className="night-kicker">Crew activity</span>
+                <div className="friend-pulse">
+                  <div className="avatar-stack">{["SP", "MK", "DR"].map((friend) => <span key={friend}>{friend}</span>)}</div>
+                  <div><b>Maya and Dev saved Joe&apos;s</b><small>Arjun is watching KAMS</small></div>
+                </div>
+                <div className="mini-meter"><i style={{ width: "82%" }} /></div>
+              </div>
+              <div className="crew-card">
+                <span className="night-kicker">Tonight&apos;s plan</span>
+                <strong>{history[0] ? "Joe's is in your history" : "No plan locked yet"}</strong>
+                <small>{history[0] ? `Last saved status: ${history[0].status}` : "Start with Joe's, invite the crew, then commit a time."}</small>
+              </div>
+              <div className="journey-mini">
+                {["Discover", "Invite", "Commit", "Check in"].map((step, index) => (
+                  <span key={step}><b>{index + 1}</b>{step}</span>
+                ))}
+              </div>
+            </aside>
           </section>
         )}
 
         {view === "tonight" && flow === "details" && (
-          <section className="single-view detail-flow">
+          <section className="single-view detail-flow expressive-view">
             <button className="text-button align-left" onClick={() => setFlow("tonight")}>Back to Tonight</button>
-            <div className="venue-glow">
-              <span className={`state momentum-${selectedMockVenue?.momentum ?? "rising"}`}>{selectedEvent ? "Live Supabase event" : "Mocked signal data"}</span>
+            <div className="venue-glow nightlife-glow">
+              <span className={`state momentum-${activeVenue.momentum}`}>{momentumCopy(activeVenue.momentum)}</span>
               <h3>{selectedName}</h3>
-              <p>{selectedEvent ? "This event can be saved to your account. Friends see intent; hosts only see aggregate demand." : selectedMockVenue?.explanation}</p>
+              <p>{activeVenue.explanation}</p>
+              <div className="friend-pulse"><div className="avatar-stack">{["SP", "MK", "DR", "+1"].map((friend) => <span key={friend}>{friend}</span>)}</div><b>{activeVenue.crewIntent}</b></div>
             </div>
-            <div className="detail-grid">
-              <span><small>Cover</small><b>{selectedEvent?.cover ?? selectedMockVenue?.cover ?? "TBD"}</b></span>
-              <span><small>Entry</small><b>{selectedEvent?.age_rule ?? selectedMockVenue?.age ?? "TBD"}</b></span>
-              <span><small>Status</small><b>{selectedEvent?.status ?? "mocked"}</b></span>
+            <div className="decision-grid">
+              <span><small>Momentum</small><b>{momentumCopy(activeVenue.momentum)}</b></span>
+              <span><small>Timing</small><b>{activeVenue.arrivalWindow}</b></span>
+              <span><small>Confidence</small><b>{confidenceCopy(activeVenue.confidence)}</b></span>
               <span><small>Plan</small><b>{latestStatus}</b></span>
             </div>
-            <button className="full-button" disabled={busyAction != null || !canPersist} onClick={() => setFlow("create")}>
-              {canPersist ? "Create plan" : "Choose a live event to create a plan"}
-            </button>
+            <div className="ops-line">{activeVenue.cover} · {activeVenue.age} · {activeVenue.walkTime}</div>
+            <button className="full-button" disabled={busyAction != null || !canPersist} onClick={() => setFlow("create")}>Start a plan</button>
           </section>
         )}
 
         {view === "tonight" && flow === "create" && (
-          <section className="single-view detail-flow">
-            <div className="plan-summary">
+          <section className="single-view detail-flow expressive-view">
+            <div className="plan-summary nightlife-glow">
               <span>{selectedName}</span>
-              <strong>Create plan</strong>
-              <small>Saving this marks your private intent for invited friends.</small>
+              <strong>Make Joe&apos;s the move</strong>
+              <small>Your crew sees the plan. Hosts only see aggregate demand.</small>
             </div>
             <button className="full-button" disabled={busyAction != null || !canPersist} onClick={() => persistAttendance("Plan", "interested", "invite")}>Join this plan</button>
           </section>
         )}
 
         {view === "crew" && flow === "invite" && (
-          <section className="single-view detail-flow">
-            <div className="plan-summary">
+          <section className="single-view detail-flow expressive-view">
+            <div className="plan-summary nightlife-glow">
               <span>{selectedName}</span>
               <strong>Invite crew</strong>
               <small>Crew names stay private. Hosts never see this list.</small>
@@ -711,8 +742,8 @@ function StudentApp({ auth, onSignOut }: { auth: AuthState; onSignOut: () => voi
         )}
 
         {view === "crew" && flow === "commit" && (
-          <section className="single-view detail-flow">
-            <div className="plan-summary">
+          <section className="single-view detail-flow expressive-view">
+            <div className="plan-summary nightlife-glow">
               <span>{selectedName}</span>
               <strong>Commit time</strong>
               <small>{invitedCrew.length} crew member{invitedCrew.length === 1 ? "" : "s"} invited</small>
@@ -727,7 +758,7 @@ function StudentApp({ auth, onSignOut }: { auth: AuthState; onSignOut: () => voi
         )}
 
         {view === "tonight" && flow === "checkin" && (
-          <section className="single-view arrival-screen">
+          <section className="single-view arrival-screen expressive-view">
             <div className="arrival-orbit"><span>✓</span></div>
             <h3>At {selectedName}?</h3>
             <p>Check in to update your plan and add a verified arrival signal.</p>
@@ -736,8 +767,8 @@ function StudentApp({ auth, onSignOut }: { auth: AuthState; onSignOut: () => voi
         )}
 
         {view === "tonight" && flow === "report" && (
-          <section className="single-view detail-flow">
-            <div className="plan-summary">
+          <section className="single-view detail-flow expressive-view">
+            <div className="plan-summary nightlife-glow">
               <span>{selectedName}</span>
               <strong>Report conditions</strong>
               <small>This report is reviewable and does not expose a live location trail.</small>
@@ -748,8 +779,8 @@ function StudentApp({ auth, onSignOut }: { auth: AuthState; onSignOut: () => voi
         )}
 
         {view === "plans" && (
-          <section className="single-view detail-flow">
-            <div className="plan-summary live-plan">
+          <section className="single-view detail-flow expressive-view">
+            <div className="plan-summary live-plan nightlife-glow">
               <span>{selectedName}</span>
               <strong>Plan history</strong>
               <small>{studentStatus}</small>
@@ -763,7 +794,7 @@ function StudentApp({ auth, onSignOut }: { auth: AuthState; onSignOut: () => voi
         )}
 
         {view === "profile" && (
-          <section className="single-view detail-flow">
+          <section className="single-view detail-flow expressive-view">
             <div className="profile-top">
               <div className="avatar">{auth.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2)}</div>
               <div><strong>{auth.displayName}</strong><small>{auth.email}</small></div>
@@ -775,6 +806,8 @@ function StudentApp({ auth, onSignOut }: { auth: AuthState; onSignOut: () => voi
               <span><b>Safety</b>Blocked users and report controls</span>
             </div>
             {auth.canHostUnofficial && <button className="full-button">Create unofficial party</button>}
+            <button className="secondary-button account-signout" onClick={onSignOut}>Sign out</button>
+            <p className="prototype-footnote">Sample activity is fictional UIUC prototype content. Saved plans, check-ins, and reports still use the connected Supabase backend.</p>
           </section>
         )}
       </div>
