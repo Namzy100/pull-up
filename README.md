@@ -1,61 +1,154 @@
 # Pull Up
 
-Pull Up is a UIUC campus nightlife coordination product focused on one student
-question:
+Pull Up is a UIUC campus nightlife coordination product. The student app answers
+one Friday-night question quickly:
 
 > What's the move tonight?
 
-The current app is a Vinext/Next 16 product shell deployed with Sites. It uses a
-student-first public Tonight preview, demo authentication, separate role routes,
-Supabase-ready APIs, and typed mock data until production credentials are added.
+The current source includes the latest student-facing visual redesign, the
+single responsive app shell, Supabase-backed authentication and persistence,
+role-separated student/host/admin routes, RLS-focused migrations, local
+end-to-end Supabase verification, and Sites deployment configuration.
 
 ## Product Surfaces
 
-- `/` shows the public, privacy-safe Tonight preview and acquisition flow.
-- `/student` is the student product for momentum, crew intent, plans, and
-  profile/privacy controls.
-- `/host` is the host product for event submission and factual operational
-  reports. Student accounts with unofficial hosting enabled can access this
-  path for house-party hosting.
-- `/admin` is the admin product for review queues, evidence replay, and source
-  reliability decisions.
+- `/` is the public preview and sign-in entry.
+- `/student` is the student product for Tonight, Crew, Plans, and Profile.
+- `/host` is the host product for venue/frat/pub/party event management and
+  factual condition reports.
+- `/admin` is the admin product for review queues and trust decisions.
 
-The architecture is separate doors, shared data spine. Students, hosts, and
-admins share event evidence, but they do not share the same user interface or
-private data.
+Students, hosts, and admins have separate doors. A student can use unofficial
+hosting flows when enabled, but a standalone host account is not the same as a
+student account, and admin review routes are protected separately.
 
-## Backend Shape
+## Stack
 
-- `supabase/schema.sql` defines the production Supabase schema and RLS policies.
-- `supabase/migrations/0001_pull_up_schema.sql` mirrors that schema in the
-  standard Supabase migrations folder.
-- `app/api/supabase/*` contains Supabase-backed profile, event, attendance,
-  host, and admin routes.
-- `app/api/ai/recommendations` contains the server-side OpenAI recommendation
-  endpoint.
-- `.env.example` lists the runtime variables needed for real data:
-  `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and
-  `OPENAI_API_KEY`.
+- Vinext / Next 16 app router
+- React client app shell in `app/components/PullUpClientApp.tsx`
+- Supabase Auth, REST APIs, Postgres schema, and RLS
+- Sites hosting metadata in `.openai/hosting.json`
+- Optional OpenAI recommendation endpoint, disabled unless `OPENAI_API_KEY` is
+  provided
 
-The hosted demo does not include real Supabase or OpenAI credentials yet, so UI
-actions that would write data are demo behavior unless those variables are set
-in Sites.
+## Environment
 
-With only the three Supabase app variables, the app can use Auth and REST but
-cannot execute raw database DDL. Apply the SQL migration with a Supabase DB
-connection, Supabase CLI session, or the Supabase SQL editor before running the
-persisted journey test.
-
-## Commands
+Copy `.env.example` to `.env.local` and fill the values locally. Do not commit
+`.env.local`.
 
 ```bash
-npm run dev
-npm run build
-npm run lint
-npm test
-npm run test:supabase
+cp .env.example .env.local
 ```
 
-For `npm run test:supabase`, start the local app with `.env.local` loaded first.
-The verifier creates temporary Supabase users and records, checks RLS boundaries,
-and deletes the temporary auth users afterward.
+Required for Supabase-backed local journeys:
+
+```bash
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+Optional, currently safe to leave blank:
+
+```bash
+OPENAI_API_KEY=
+```
+
+The service-role key must stay server-only. Do not expose it through client
+components, browser responses, public-prefixed variables, logs, or committed
+files.
+
+## Local Setup
+
+```bash
+npm install
+npm run dev
+```
+
+Open the local URL printed by the dev server, usually:
+
+```bash
+http://127.0.0.1:5173
+```
+
+## Supabase Migration
+
+Apply the schema before running persisted journeys:
+
+```bash
+supabase/migrations/0001_pull_up_schema.sql
+```
+
+You can apply it with the Supabase SQL Editor, a Supabase CLI database session,
+or any trusted Postgres connection for the target Supabase project.
+
+The migration creates the app tables, policies, triggers, and helper functions
+used by:
+
+- profile creation and role separation
+- student attendance and check-in persistence
+- privacy-safe signal/event review
+- host reports that cannot directly manipulate momentum
+- admin review access
+
+Do not weaken RLS to make a UI flow pass. Fix the route, role, or query instead.
+
+## Testing
+
+Run the standard verification set:
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+For the persisted Supabase journey, keep the local app server running with
+`.env.local` loaded, then run:
+
+```bash
+LOCAL_APP_URL=http://127.0.0.1:5173 npm run test:supabase
+```
+
+The Supabase verifier creates temporary users and validates:
+
+- environment wiring
+- schema availability
+- Auth sign-in
+- profile creation
+- student-only profile visibility
+- attendance/check-in persistence
+- condition report persistence
+- aggregate signal privacy
+- admin route blocking for students
+- expired-session rejection
+- host report boundaries
+
+## Deployment
+
+The project is configured for Sites with:
+
+```bash
+.openai/hosting.json
+```
+
+Build before saving or deploying:
+
+```bash
+npm run build
+```
+
+For Sites deployment, use the existing project in `.openai/hosting.json`.
+Do not create a duplicate Site. Runtime environment variables are managed in
+Sites, not committed to this repository.
+
+## Source Safety
+
+Committed source should include application code, migrations, tests, package
+files, and documentation. It should exclude:
+
+- `.env.local` and all real secrets
+- `node_modules`
+- `dist`, `.next`, `.vinext`, `.wrangler`, and other build output
+- temporary screenshots, archives, and local QA files
+
