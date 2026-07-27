@@ -1,10 +1,11 @@
-import { env } from "cloudflare:workers";
 import { jsonError, requireProfile, routeError, supabaseRest } from "../../_supabase";
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
     const { profile } = await requireProfile(request, ["student", "admin"]);
-    if (!env.OPENAI_API_KEY) {
+    if (!process.env.OPENAI_API_KEY) {
       return jsonError("OpenAI API key is not configured.", 503);
     }
 
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
-        authorization: `Bearer ${env.OPENAI_API_KEY}`,
+        authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         "content-type": "application/json",
       },
       body: JSON.stringify({

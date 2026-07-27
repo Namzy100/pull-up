@@ -1,5 +1,3 @@
-import { env } from "cloudflare:workers";
-
 export type PullUpAccountType = "student" | "host" | "admin";
 
 export type PullUpProfile = {
@@ -24,9 +22,9 @@ type SupabaseConfig = {
 };
 
 function readSupabaseConfig(): SupabaseConfig {
-  const url = env.SUPABASE_URL;
-  const anonKey = env.SUPABASE_ANON_KEY;
-  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !anonKey || !serviceRoleKey) {
     throw new Error("Supabase environment variables are not configured.");
