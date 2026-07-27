@@ -1,5 +1,13 @@
 import { jsonError, requireProfile, routeError, supabaseRest } from "../../_supabase";
 
+type AttendanceRow = {
+  id: string;
+  event_id: string;
+  user_id: string;
+  status: string;
+  visibility: string;
+};
+
 export async function GET(request: Request) {
   try {
     const { user } = await requireProfile(request, ["student", "admin"]);
@@ -23,7 +31,7 @@ export async function POST(request: Request) {
     };
     if (!payload.eventId) return jsonError("eventId is required");
 
-    const [attendance] = await supabaseRest("attendances?on_conflict=event_id,user_id", {
+    const [attendance] = await supabaseRest<AttendanceRow[]>("attendances?on_conflict=event_id,user_id", {
       method: "POST",
       headers: { prefer: "resolution=merge-duplicates,return=representation" },
       body: JSON.stringify({

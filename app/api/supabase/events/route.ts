@@ -1,5 +1,22 @@
 import { jsonError, requireProfile, routeError, supabaseRest } from "../../_supabase";
 
+type EventRow = {
+  id: string;
+  campus_id: string;
+  venue_id: string | null;
+  host_organization_id: string | null;
+  created_by_user_id: string;
+  title: string;
+  description: string;
+  starts_at: string;
+  ends_at: string;
+  status: string;
+  event_type: string;
+  cover: string;
+  age_rule: string;
+  invite_mode: string;
+};
+
 export async function GET(request: Request) {
   try {
     await requireProfile(request);
@@ -53,7 +70,7 @@ export async function POST(request: Request) {
       return jsonError("Student profile is not enabled to host unofficial parties.", 403);
     }
 
-    const [event] = await supabaseRest("events", {
+    const [event] = await supabaseRest<EventRow[]>("events", {
       method: "POST",
       body: JSON.stringify({
         campus_id: profile.campus_id,

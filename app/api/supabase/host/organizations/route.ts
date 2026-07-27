@@ -1,5 +1,14 @@
 import { jsonError, requireProfile, routeError, supabaseRest } from "../../../_supabase";
 
+type HostOrganizationRow = {
+  id: string;
+  owner_user_id: string;
+  campus_id: string;
+  name: string;
+  kind: string;
+  verification_status: string;
+};
+
 export async function GET(request: Request) {
   try {
     const { user } = await requireProfile(request, ["host", "admin"]);
@@ -21,7 +30,7 @@ export async function POST(request: Request) {
     };
     if (!payload.name || !payload.kind) return jsonError("name and kind are required");
 
-    const [organization] = await supabaseRest("host_organizations", {
+    const [organization] = await supabaseRest<HostOrganizationRow[]>("host_organizations", {
       method: "POST",
       body: JSON.stringify({
         owner_user_id: user.id,

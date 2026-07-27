@@ -1,5 +1,14 @@
 import { jsonError, requireProfile, routeError, supabaseRest } from "../../../_supabase";
 
+type HostReportRow = {
+  id: string;
+  event_id: string;
+  submitted_by_user_id: string;
+  line_state: string;
+  capacity_pressure: number;
+  note: string;
+};
+
 export async function POST(request: Request) {
   try {
     const { profile, user } = await requireProfile(request, ["host", "admin"]);
@@ -17,7 +26,7 @@ export async function POST(request: Request) {
       return jsonError("Host account cannot report for this event.", 403);
     }
 
-    const [report] = await supabaseRest("host_reports", {
+    const [report] = await supabaseRest<HostReportRow[]>("host_reports", {
       method: "POST",
       body: JSON.stringify({
         event_id: payload.eventId,

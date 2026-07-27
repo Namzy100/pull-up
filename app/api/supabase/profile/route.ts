@@ -1,4 +1,5 @@
 import { jsonError, requireSupabaseUser, routeError, supabaseRest } from "../../_supabase";
+import type { PullUpProfile } from "../../_supabase";
 
 export async function GET(request: Request) {
   try {
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
       return jsonError("displayName is required");
     }
 
-    const [profile] = await supabaseRest(
+    const [profile] = await supabaseRest<PullUpProfile[]>(
       "profiles?on_conflict=user_id",
       {
         method: "POST",

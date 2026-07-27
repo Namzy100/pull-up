@@ -70,18 +70,16 @@ export async function supabaseRest<T>(
   init: RequestInit = {},
 ): Promise<T> {
   const config = readSupabaseConfig();
-  const serviceAuthorization = config.serviceRoleKey.startsWith("sb_secret_")
-    ? {}
-    : { authorization: `Bearer ${config.serviceRoleKey}` };
+  const headers = new Headers(init.headers);
+  headers.set("apikey", config.serviceRoleKey);
+  headers.set("content-type", "application/json");
+  headers.set("prefer", "return=representation");
+  if (!config.serviceRoleKey.startsWith("sb_secret_")) {
+    headers.set("authorization", `Bearer ${config.serviceRoleKey}`);
+  }
   const response = await fetch(`${config.url}/rest/v1/${path}`, {
     ...init,
-    headers: {
-      apikey: config.serviceRoleKey,
-      ...serviceAuthorization,
-      "content-type": "application/json",
-      prefer: "return=representation",
-      ...(init.headers ?? {}),
-    },
+    headers,
   });
 
   if (!response.ok) {

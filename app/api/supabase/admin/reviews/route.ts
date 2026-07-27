@@ -1,5 +1,13 @@
 import { jsonError, requireProfile, routeError, supabaseRest } from "../../../_supabase";
 
+type ModerationReviewRow = {
+  id: string;
+  reviewer_user_id: string;
+  status: string;
+  decision: string;
+  updated_at: string;
+};
+
 export async function GET(request: Request) {
   try {
     await requireProfile(request, ["admin"]);
@@ -24,7 +32,7 @@ export async function PATCH(request: Request) {
       return jsonError("reviewId and status are required");
     }
 
-    const [review] = await supabaseRest(`moderation_reviews?id=eq.${payload.reviewId}`, {
+    const [review] = await supabaseRest<ModerationReviewRow[]>(`moderation_reviews?id=eq.${payload.reviewId}`, {
       method: "PATCH",
       body: JSON.stringify({
         reviewer_user_id: user.id,

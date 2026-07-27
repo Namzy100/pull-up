@@ -1,5 +1,17 @@
 import { jsonError, requireProfile, routeError, supabaseRest } from "../../_supabase";
 
+type SignalEventRow = {
+  id: string;
+  event_id: string;
+  user_id: string;
+  source: string;
+  weight: number;
+  verification_level: number;
+  trust_score: number;
+  expires_at: string;
+  metadata: Record<string, unknown>;
+};
+
 export async function POST(request: Request) {
   try {
     const { user } = await requireProfile(request, ["student", "admin"]);
@@ -14,7 +26,7 @@ export async function POST(request: Request) {
       return jsonError("eventId and lineState are required");
     }
 
-    const [signal] = await supabaseRest("signal_events", {
+    const [signal] = await supabaseRest<SignalEventRow[]>("signal_events", {
       method: "POST",
       body: JSON.stringify({
         event_id: payload.eventId,
