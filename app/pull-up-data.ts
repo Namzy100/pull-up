@@ -22,11 +22,16 @@ export type Venue = {
   host: string;
   type: string;
   momentum: MomentumState;
+  momentumPct: number;
   confidence: SignalConfidence;
   internalScore: number;
   explanation: string;
+  peak: string;
   arrivalWindow: string;
   crewIntent: string;
+  crewSubtext: string;
+  friends: string[];
+  friendCount: number;
   campusIntent: string;
   evidence: string[];
   updated: string;
@@ -62,15 +67,21 @@ export const demoProfiles: Record<AccountType, DemoProfile> = {
 
 export const venues: Venue[] = [
   {
-    name: "Joe's Brewery",
+    name: "Joe's",
     host: "Joe's operations",
     type: "Campus bar",
     momentum: "building-fast",
+    momentumPct: 86,
     confidence: "high",
     internalScore: 86,
-    explanation: "Likely to peak around 11:15 PM.",
+    explanation:
+      "Verified arrivals are accelerating and the line is still short. This is where the night is tipping.",
+    peak: "Likely to peak around 11:15",
     arrivalWindow: "Go before 10:45",
     crewIntent: "4 friends leaning here",
+    crewSubtext: "Maya and Dev already saved it",
+    friends: ["SP", "MK", "DR", "AR"],
+    friendCount: 4,
     campusIntent: "18 students heading there",
     evidence: ["42 verified arrivals", "3 ambassador reports", "Cover confirmed by host"],
     updated: "Updated 4 min ago",
@@ -79,40 +90,24 @@ export const venues: Venue[] = [
     cover: "$5 cover",
     line: "Moderate line",
     age: "19+",
-    action: "Join the plan",
+    action: "Start a plan",
     risk: "low",
-  },
-  {
-    name: "The Red Lion",
-    host: "Lion host team",
-    type: "Campus bar",
-    momentum: "no-reliable-call",
-    confidence: "low",
-    internalScore: 34,
-    explanation: "Some saves, but arrivals and reports do not agree yet.",
-    arrivalWindow: "Wait for a cleaner call",
-    crewIntent: "2 friends watching",
-    campusIntent: "No reliable campus trend",
-    evidence: ["Host report pending review", "Arrivals too sparse", "Last report 31 min ago"],
-    updated: "Updated 31 min ago",
-    distance: "0.6 mi",
-    walkTime: "11 min walk",
-    cover: "$10 cover",
-    line: "Unknown line",
-    age: "19+",
-    action: "Watch this spot",
-    risk: "high",
   },
   {
     name: "KAMS",
     host: "KAMS promotions",
     type: "Nightlife staple",
     momentum: "steady",
+    momentumPct: 64,
     confidence: "medium",
     internalScore: 71,
-    explanation: "Reliable traffic, but not accelerating right now.",
+    explanation: "Reliable traffic, holding steady rather than climbing.",
+    peak: "Even through midnight",
     arrivalWindow: "Best after 10:30",
     crewIntent: "3 friends interested",
+    crewSubtext: "Arjun is watching this one",
+    friends: ["AK", "MP", "RS"],
+    friendCount: 3,
     campusIntent: "12 students heading there",
     evidence: ["19 verified arrivals", "Friend intent is steady", "Line report 9 min ago"],
     updated: "Updated 9 min ago",
@@ -129,11 +124,16 @@ export const venues: Venue[] = [
     host: "Murphy's manager",
     type: "Pub",
     momentum: "quiet",
+    momentumPct: 34,
     confidence: "medium",
     internalScore: 58,
-    explanation: "Good for a smaller group; no broad campus rush yet.",
-    arrivalWindow: "Easy now",
+    explanation: "Easy and low-key right now. Good for a smaller group.",
+    peak: "No rush expected",
+    arrivalWindow: "Easy any time",
     crewIntent: "1 friend nearby",
+    crewSubtext: "Priya is close by",
+    friends: ["PV"],
+    friendCount: 1,
     campusIntent: "8 students saved it",
     evidence: ["Cover confirmed", "Line verified quiet", "Historical Friday pattern"],
     updated: "Updated 6 min ago",
@@ -144,6 +144,33 @@ export const venues: Venue[] = [
     age: "21+",
     action: "Invite crew",
     risk: "low",
+  },
+  {
+    name: "The Red Lion",
+    host: "Lion host team",
+    type: "Campus bar",
+    momentum: "no-reliable-call",
+    momentumPct: 0,
+    confidence: "low",
+    internalScore: 34,
+    explanation:
+      "A few saves, but arrivals and reports do not agree yet. Pull Up is holding the call until it is trustworthy.",
+    peak: "Not enough signal",
+    arrivalWindow: "Wait for a cleaner read",
+    crewIntent: "2 friends watching",
+    crewSubtext: "Nobody has committed yet",
+    friends: ["JL", "TN"],
+    friendCount: 2,
+    campusIntent: "No reliable campus trend",
+    evidence: ["Host report pending review", "Arrivals too sparse", "Last report 31 min ago"],
+    updated: "Updated 31 min ago",
+    distance: "0.6 mi",
+    walkTime: "11 min walk",
+    cover: "$10 cover",
+    line: "Unknown line",
+    age: "19+",
+    action: "Watch this spot",
+    risk: "high",
   },
 ];
 
@@ -203,11 +230,15 @@ export const adminQueue = [
   },
   {
     title: "Ambassador report supports listing",
-    venue: "Joe's Brewery",
+    venue: "Joe's",
     detail: "Fresh line report matches verified arrival velocity.",
     risk: "low" as Risk,
   },
 ];
+
+export const crewMembers = ["Maya", "Dev", "Arjun", "Priya", "Noah", "Bella"];
+
+export const arrivalWindows = ["10:15 – 10:30", "10:30 – 10:45", "10:45 – 11:00"];
 
 export function momentumCopy(momentum: MomentumState) {
   const labels: Record<MomentumState, string> = {
@@ -215,17 +246,17 @@ export function momentumCopy(momentum: MomentumState) {
     "building-fast": "Building fast",
     rising: "Rising",
     steady: "Steady",
-    quiet: "Quiet",
+    quiet: "Quiet right now",
     cooling: "Cooling",
-    "no-reliable-call": "No reliable call",
+    "no-reliable-call": "No reliable call yet",
   };
   return labels[momentum];
 }
 
 export function confidenceCopy(confidence: SignalConfidence) {
-  if (confidence === "high") return "High confidence";
-  if (confidence === "medium") return "Medium confidence";
-  return "Low confidence";
+  if (confidence === "high") return "Strong signal";
+  if (confidence === "medium") return "Fair signal";
+  return "Weak signal";
 }
 
 export function riskCopy(risk: Risk) {

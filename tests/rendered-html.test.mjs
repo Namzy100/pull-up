@@ -4,58 +4,125 @@ import test from "node:test";
 
 const templateRoot = new URL("../", import.meta.url);
 
-test("defines the mobile Pull Up product shell", async () => {
-  const [page, app, data, student, host, admin, layout, css] = await Promise.all([
+test("defines the single-surface student product and one design system", async () => {
+  const [
+    page,
+    orchestrator,
+    entry,
+    studentApp,
+    ui,
+    callback,
+    supabaseAuth,
+    supabaseClient,
+    host,
+    admin,
+    data,
+    student,
+    hostPage,
+    adminPage,
+    layout,
+    css,
+    migration0002,
+  ] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/PullUpClientApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/Entry.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/StudentApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/ui.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/auth/callback/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/supabaseAuth.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/supabaseClient.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/HostApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/AdminApp.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/pull-up-data.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/student/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/host/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/0002_profile_role_lock.sql", import.meta.url), "utf8"),
   ]);
 
+  // Shell + routing.
   assert.match(layout, /title:\s*"Pull Up"/);
   assert.match(page, /PullUpClientApp/);
-  assert.match(app, /Know where campus is actually going tonight\./);
-  assert.match(app, /Stop guessing from group chats/);
-  assert.match(app, /Preview tonight without signing in/);
-  assert.match(data, /Joe's Brewery/);
+  assert.match(student, /requiredRole="student"/);
+  assert.match(hostPage, /requiredRole="host"/);
+  assert.match(adminPage, /requiredRole="admin"/);
+
+  // Concise entry / sign-in experience.
+  assert.match(entry, /Sign in to Pull Up/);
+  assert.match(entry, /Know where campus is/);
+  assert.match(entry, /Preview tonight/);
+  assert.match(entry, /Create an account/);
+
+  // Tonight leads with the decision and the plan flow is coherent.
+  assert.match(studentApp, /className="bottom-nav"/);
+  assert.match(studentApp, /What's the move\?/);
+  assert.match(studentApp, /See why/); // secondary action into the evidence
+  assert.match(studentApp, /Start a plan/);
+  assert.match(studentApp, /Commit arrival time/);
+  assert.match(studentApp, /Report conditions/);
+  assert.match(studentApp, /Sign out/); // sign-out lives in Profile
+
+  // Distinct sample-night momentum states, coherent scenario.
+  assert.match(data, /Joe's/);
   assert.match(data, /The Red Lion/);
   assert.match(data, /Murphy's Pub/);
+  assert.match(data, /KAMS/);
   assert.match(data, /No reliable call/);
-  assert.match(app, /student-shell/);
-  assert.match(app, /student-bottom-nav/);
-  assert.match(app, /Commit arrival time/);
-  assert.match(app, /Report conditions/);
-  assert.match(app, /Plan history/);
-  assert.match(app, /Prototype night · sample activity/);
-  assert.match(app, /What&apos;s the move\?/);
-  assert.match(app, /4 friends leaning here/);
   assert.match(data, /4 friends leaning here/);
-  assert.match(data, /High confidence/);
-  assert.match(app, /One decision, four moments\./);
-  assert.match(app, /Hosts report facts\. Admins protect the call\./);
-  assert.match(app, /Access blocked/);
-  assert.match(app, /ensureProfile/);
-  assert.match(app, /displayNameFromEmail/);
-  assert.match(app, /canHostUnofficial: false/);
-  assert.match(app, /requiredRole === "host" && auth\.accountType === "student" && auth\.canHostUnofficial/);
-  assert.match(app, /Create unofficial party/);
-  assert.match(app, /Needs a decision/);
-  assert.match(app, /Submit to Pull Up review/);
-  assert.doesNotMatch(app, /PhoneFrame audience="Student"/);
-  assert.doesNotMatch(app, /mobile-product student-app/);
-  assert.match(student, /requiredRole="student"/);
-  assert.match(host, /requiredRole="host"/);
-  assert.match(admin, /requiredRole="admin"/);
-  assert.match(css, /\.phone-frame/);
-  assert.match(css, /\.student-hero/);
-  assert.match(css, /\.journey-grid/);
-  assert.match(css, /\.admin-app/);
-  assert.doesNotMatch(app, /supabase\.auth\.users|host trails|Trusted signals/);
-  assert.doesNotMatch(app, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
+
+  // One quiet global disclosure.
+  assert.match(ui, /Prototype night · sample activity/);
+  assert.match(ui, /export function StateScreen/);
+  assert.match(ui, /export function MomentumMeter/);
+
+  // Role separation preserved.
+  assert.match(
+    orchestrator,
+    /role === "host" && session\.accountType === "student" && session\.canHostUnofficial/,
+  );
+  assert.match(host, /Report live conditions|Submit for review/);
+  assert.match(admin, /Needs a decision/);
+  assert.match(admin, /Protect the call/);
+
+  // Auth lifecycle: PKCE, email confirm + password reset, token stripped from URL.
+  assert.match(supabaseClient, /flowType: "pkce"/);
+  assert.match(supabaseClient, /storageKey: "pull-up-auth"/);
+  assert.match(supabaseAuth, /ensureProfile/);
+  assert.match(supabaseAuth, /exchangeCodeForSession/);
+  assert.match(supabaseAuth, /emailRedirectTo/);
+  assert.match(entry, /isCampusEmail/);
+  assert.match(callback, /exchangeCodeForSession/);
+  assert.match(callback, /recovery/);
+  assert.match(callback, /Choose a new password/);
+  assert.match(callback, /replaceState/);
+
+  // RLS hardening: students cannot self-assign a host/admin role.
+  assert.match(migration0002, /revoke update on public\.profiles/i);
+  assert.match(migration0002, /grant update \(display_name/i);
+  assert.doesNotMatch(migration0002, /grant update \([^)]*account_type/i);
+
+  // One design system in the CSS.
+  assert.match(css, /\.move-hero/);
+  assert.match(css, /\.bottom-nav/);
+  assert.match(css, /\.signal-tile/);
+  assert.match(css, /\.momentum-meter/);
+  assert.match(css, /prefers-reduced-motion/);
+  assert.match(css, /:focus-visible/);
+
+  // Redesign guards: no phone frames, no stock nightclub photography.
+  for (const source of [entry, studentApp, orchestrator, host, admin]) {
+    assert.doesNotMatch(source, /PhoneFrame|phone-frame/);
+  }
+  assert.doesNotMatch(css, /\.phone-frame/);
+  assert.doesNotMatch(css, /unsplash/i);
+
+  // Security: the service-role key never appears in client-side code.
+  for (const source of [entry, studentApp, orchestrator, ui, supabaseAuth, supabaseClient, callback]) {
+    assert.doesNotMatch(source, /SERVICE_ROLE/);
+  }
 });
 
 test("defines the backend schema and API surface", async () => {

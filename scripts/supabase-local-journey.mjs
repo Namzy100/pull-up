@@ -10,7 +10,7 @@ if (missing.length > 0) {
 const supabaseUrl = env.SUPABASE_URL.replace(/\/$/, "");
 const anonKey = env.SUPABASE_ANON_KEY;
 const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
-const appUrl = (process.env.LOCAL_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+const appUrl = (process.env.LOCAL_APP_URL ?? "http://127.0.0.1:5173").replace(/\/$/, "");
 const runId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const password = `PullUp-${runId}-Pass!`;
 const createdUserIds = [];
@@ -97,6 +97,23 @@ try {
   });
   assert(blockedAdminResponse.status === 403, "Student token should not access admin reviews.");
   record("Student token is blocked from admin review routes.");
+
+  // Attempt self privilege-escalation directly against PostgREST with the student's JWT.
+  await fetch(`${supabaseUrl}/rest/v1/profiles?user_id=eq.${student.id}`, {
+    method: "PATCH",
+    headers: {
+      apikey: anonKey,
+      authorization: `Bearer ${studentSession.access_token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ account_type: "admin", can_host_unofficial: true }),
+  }).catch(() => {});
+  const [selfAfter] = await restService(`profiles?user_id=eq.${student.id}&select=account_type`);
+  assert(
+    selfAfter?.account_type === "student",
+    "A student must not be able to self-assign a host or admin role (apply migration 0002).",
+  );
+  record("Students cannot self-assign a host or admin role (column-level privilege lock).");
 
   const expiredSessionResponse = await fetch(`${appUrl}/api/supabase/profile`, {
     headers: { authorization: "Bearer expired-test-token" },
